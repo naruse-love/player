@@ -41,14 +41,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.0"
-  chalkdart:
-    dependency: transitive
-    description:
-      name: chalkdart
-      sha256: "08c910ee341fcdd1e46f20ddce59b13c1d85f5d97f2fd2f12014c46ede670e40"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.3.2"
   characters:
     dependency: transitive
     description:
@@ -425,10 +417,10 @@ packages:
     dependency: "direct main"
     description:
       name: material_symbols_icons
-      sha256: "1403944c2a68dbdf934fca2b2115a372e70a4a185c136ab71a9d16e2108d0b14"
+      sha256: "49c532dd0b74544e9d8d93ec0f821d52ec532e7c9263c889ebe71b1be4f34ba7"
       url: "https://pub.dev"
     source: hosted
-    version: "4.2805.1"
+    version: "4.2951.0"
   meta:
     dependency: transitive
     description:
@@ -650,6 +642,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.3.1"
+  synchronized:
+    dependency: transitive
+    description:
+      name: synchronized
+      sha256: "93b153dcb6a26dcddee6ca087dd634b53e38c10b5aa163e8e49501a776456153"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.4.1"
   term_glyph:
     dependency: transitive
     description:
@@ -779,5 +779,5 @@ packages:
     source: hosted
     version: "2.2.2"
 sdks:
-  dart: ">=3.10.0-0 <4.0.0"
+  dart: ">=3.12.0 <4.0.0"
   flutter: ">=3.27.0"
