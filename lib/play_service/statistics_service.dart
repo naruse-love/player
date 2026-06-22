@@ -146,12 +146,25 @@ class StatisticsService extends ChangeNotifier {
     _save();
   }
 
-  /// 单独增加收听时长（不增加播放次数），由连续跟踪调用
-  void addListeningTime(String path, int seconds) {
-    if (seconds <= 0) return;
+  /// 记录一次未达半程的部分收听（只增时长，不增播放次数）
+  void recordPartialListen(String path, {int listenedSeconds = 0}) {
+    if (listenedSeconds <= 0) return;
+    final now = DateTime.now();
     final stat = _stats.putIfAbsent(path, () => AudioStatistics());
-    stat.totalListeningTime += seconds;
-    stat.lastPlayed = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+    stat.totalListeningTime += listenedSeconds;
+    stat.lastPlayed = now.millisecondsSinceEpoch ~/ 1000;
+    stat.playHistory.add(PlayRecord(
+      path: path,
+      playedAt: now,
+      listenedSeconds: listenedSeconds,
+    ));
+
+    if (stat.playHistory.length > 200) {
+      stat.playHistory =
+          stat.playHistory.sublist(stat.playHistory.length - 200);
+    }
+
     notifyListeners();
     _save();
   }

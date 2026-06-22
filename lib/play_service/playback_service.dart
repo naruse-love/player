@@ -68,25 +68,20 @@ class PlaybackService extends ChangeNotifier {
 
       if (nowPlaying == null) return;
 
-      // 连续跟踪实际收听时长
+      // 连续跟踪实际收听时长（逐帧累加位置增量）
       if (progress > _maxTrackedPosition) {
         _listenedThisSession += progress - _maxTrackedPosition;
         _maxTrackedPosition = progress;
-
-        // 每积累 10 秒落盘一次
-        if (_listenedThisSession >= _lastFlushedListening + 10) {
-          _flushListeningTime();
-        }
       }
 
-      // 播放进度过半时增加播放次数（完整播放才算一次）
+      // 播放进度过半时增加一次播放计数
       if (_player.length > 0 &&
           progress >= _player.length / 2 &&
           !_hasIncrementedForCurrentSong) {
         _hasIncrementedForCurrentSong = true;
+        // 此时 _listenedThisSession 就是本次实际收听总时长
         StatisticsService.instance.incrementPlayCount(
             nowPlaying!.path, listenedSeconds: _listenedThisSession.round());
-        _lastFlushedListening = _listenedThisSession;
       }
     });
   }
@@ -106,16 +101,20 @@ class PlaybackService extends ChangeNotifier {
   double _maxTrackedPosition = 0;
   /// 当前歌曲已积累的收听秒数（浮点精确）
   double _listenedThisSession = 0;
-  /// 上次落盘时的 listening 值
-  double _lastFlushedListening = 0;
 
-  /// 将当前积累的收听时长写入统计
-  void _flushListeningTime() {
-    if (nowPlaying == null || _listenedThisSession <= _lastFlushedListening) return;
-    final delta = _listenedThisSession - _lastFlushedListening;
-    if (delta < 1) return;
-    _lastFlushedListening = _listenedThisSession;
-    StatisticsService.instance.addListeningTime(nowPlaying!.path, delta.round());
+  /// 结束当前播放会话，将实际收听时长写入统计
+  /// [incrementCount] 是否同时增加播放次数
+  void _finalizePlaySession({bool incrementCount = false}) {
+    if (nowPlaying == null || _listenedThisSession < 1) return;
+    final secs = _listenedThisSession.round();
+    if (incrementCount) {
+      StatisticsService.instance
+          .incrementPlayCount(nowPlaying!.path, listenedSeconds: secs);
+    } else {
+      // 未达半程但确实听了，单独记录收听时长
+      StatisticsService.instance
+          .recordPartialListen(nowPlaying!.path, listenedSeconds: secs);
+    }
   }
 
   /// 独占模式
@@ -171,15 +170,14 @@ class PlaybackService extends ChangeNotifier {
   /// 6. 通知并更新主题色
   void _loadAndPlay(int audioIndex, List<Audio> playlist) {
     try {
-      // 切歌前先把之前积累的收听时长写入
-      _flushListeningTime();
+      // 切歌前先把之前的收听会话结束
+      _finalizePlaySession();
 
       _playlistIndex = audioIndex;
       nowPlaying = playlist[audioIndex];
       _hasIncrementedForCurrentSong = false;
       _maxTrackedPosition = 0;
       _listenedThisSession = 0;
-      _lastFlushedListening = 0;
       _player.setSource(nowPlaying!.path);
       setVolumeDsp(AppPreference.instance.playbackPref.volumeDsp);
 
@@ -363,7 +361,7 @@ class PlaybackService extends ChangeNotifier {
   }
 
   void close() {
-    _flushListeningTime();
+    _finalizePlaySession(incrementCount: _hasIncrementedForCurrentSong);
     _savePlaylistState();
     _playerStateStreamSub.cancel();
     _smtcEventStreamSub.cancel();
