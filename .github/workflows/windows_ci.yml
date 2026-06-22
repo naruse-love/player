@@ -104,7 +104,7 @@ jobs:
         $outExe = "CorianderPlayer_Upgrade_v1.5.2.exe"
         Push-Location $tmpDir
         $iconOpt = if (Test-Path "app_icon.ico") { "/win32icon:app_icon.ico" } else { "" }
-        & $csc /target:winexe /resource:coriander_player.zip /out:$outExe $iconOpt sfx_installer.cs `
+        & $csc /target:exe /resource:coriander_player.zip /out:$outExe $iconOpt sfx_installer.cs `
           /reference:"$facDir\System.IO.Compression.dll" `
           /reference:"$facDir\System.IO.Compression.FileSystem.dll" 2>&1 | Write-Host
         Pop-Location
