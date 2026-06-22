@@ -90,17 +90,23 @@ jobs:
         Copy-Item coriander_player.zip $tmpDir\
         if (Test-Path "app_icon.ico") { Copy-Item app_icon.ico $tmpDir\ }
         
-        # 查找 csc.exe
-        $csc = Get-ChildItem -Path "${env:windir}\Microsoft.NET\Framework64" -Recurse -Filter "csc.exe" | Select-Object -First 1 -ExpandProperty FullName
-        if (-not $csc) {
-          $csc = Get-ChildItem -Path "${env:windir}\Microsoft.NET\Framework" -Recurse -Filter "csc.exe" | Select-Object -First 1 -ExpandProperty FullName
+        # 查找 .NET 4.x 的 csc.exe（需要 4.5+ 才能用 System.IO.Compression）
+        $csc = "${env:windir}\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+        if (-not (Test-Path $csc)) {
+          $csc = "${env:windir}\Microsoft.NET\Framework\v4.0.30319\csc.exe"
         }
         Write-Host "Using C# compiler: $csc"
+        if (-not (Test-Path $csc)) { Write-Host "csc.exe (v4.x) not found!" ; exit 1 }
+        
+        # System.IO.Compression 在 .NET 4.5+ 的 FAC 中
+        $facDir = Split-Path $csc -Parent
         
         $outExe = "CorianderPlayer_Upgrade_v1.5.2.exe"
         Push-Location $tmpDir
         $iconOpt = if (Test-Path "app_icon.ico") { "/win32icon:app_icon.ico" } else { "" }
-        & $csc /target:winexe /resource:coriander_player.zip /out:$outExe $iconOpt sfx_installer.cs /reference:"System.IO.Compression.dll" /reference:"System.IO.Compression.FileSystem.dll" 2>&1 | Write-Host
+        & $csc /target:winexe /resource:coriander_player.zip /out:$outExe $iconOpt sfx_installer.cs `
+          /reference:"$facDir\System.IO.Compression.dll" `
+          /reference:"$facDir\System.IO.Compression.FileSystem.dll" 2>&1 | Write-Host
         Pop-Location
         
         # 复制结果到输出目录
