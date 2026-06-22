@@ -35,12 +35,12 @@ enum PlayerState {
 }
 
 const BASS_PLUGINS = [
-  "BASS\\bassape.dll",
-  "BASS\\bassdsd.dll",
-  "BASS\\bassflac.dll",
-  "BASS\\bassmidi.dll",
-  "BASS\\bassopus.dll",
-  "BASS\\basswv.dll"
+  "bassape.dll",
+  "bassdsd.dll",
+  "bassflac.dll",
+  "bassmidi.dll",
+  "bassopus.dll",
+  "basswv.dll"
 ];
 
 class BassPlayer {
@@ -203,8 +203,13 @@ class BassPlayer {
     _bassWasapi = BASS.BassWasapi(_bassWasapiLib);
 
     // load add-ons to avoid using os codec or support more format
+    final bassDir = path.join(
+      path.dirname(Platform.resolvedExecutable),
+      "BASS",
+    );
     for (final plugin in BASS_PLUGINS) {
-      final pluginPathP = plugin.toNativeUtf16() as ffi.Pointer<ffi.Char>;
+      final pluginPath = path.join(bassDir, plugin);
+      final pluginPathP = pluginPath.toNativeUtf16() as ffi.Pointer<ffi.Char>;
       final hplugin = _bass.BASS_PluginLoad(pluginPathP, BASS.BASS_UNICODE);
 
       if (hplugin == 0) {
