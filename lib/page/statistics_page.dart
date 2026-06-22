@@ -236,11 +236,15 @@ class _StatisticsPageState extends State<StatisticsPage> {
     final records = stats.queryByDateRange(_rangeStart, _rangeEnd);
     final grouped = stats.getGroupedByDay();
     final topSongs = stats.getCountByDateRange(_rangeStart, _rangeEnd);
+    final topByListening = stats.getListeningTimeByDateRange(_rangeStart, _rangeEnd);
     final chartBins = _buildChartData(stats);
 
     final totalPlays = records.length;
     final uniqueSongs = topSongs.length;
+    final totalListening = stats.getTotalListeningTime(_rangeStart, _rangeEnd);
     final top5 = topSongs.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final top5Listening = topByListening.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
     return PageScaffold(
@@ -255,7 +259,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
           _buildDateChips(context),
 
           // 摘要卡片
-          _buildSummaryCards(context, totalPlays, uniqueSongs),
+          _buildSummaryCards(context, totalPlays, uniqueSongs, totalListening),
 
           // 直方图
           if (chartBins.isNotEmpty) ...[
@@ -280,6 +284,16 @@ class _StatisticsPageState extends State<StatisticsPage> {
                   path: entry.key,
                   playCount: entry.value,
                   rank: top5.indexOf(entry) + 1,
+                )),
+          ],
+
+          // 最多收听
+          if (top5Listening.isNotEmpty) ...[
+            const _SectionHeader(title: "最多收听"),
+            ...top5Listening.take(10).map((entry) => _ListeningTile(
+                  path: entry.key,
+                  totalSeconds: entry.value,
+                  rank: top5Listening.indexOf(entry) + 1,
                 )),
           ],
 
@@ -389,7 +403,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
   }
 
   Widget _buildSummaryCards(
-      BuildContext context, int totalPlays, int uniqueSongs) {
+      BuildContext context, int totalPlays, int uniqueSongs, int totalListening) {
     final scheme = Theme.of(context).colorScheme;
 
     return Padding(
@@ -413,24 +427,18 @@ class _StatisticsPageState extends State<StatisticsPage> {
               color: scheme.tertiary,
             ),
           ),
+          const SizedBox(width: 12),
           Expanded(
             child: _SummaryCard(
-              icon: Icons.trending_up,
-              label: "日均",
-              value: _calcDailyAvg(totalPlays),
+              icon: Icons.timer_outlined,
+              label: "听歌时长",
+              value: StatisticsService.formatDuration(totalListening),
               color: scheme.secondary,
             ),
           ),
         ],
       ),
     );
-  }
-
-  String _calcDailyAvg(int total) {
-    final days = _rangeEnd.difference(_rangeStart).inDays;
-    if (days <= 0) return "$total";
-    final avg = total / (days + 1);
-    return avg.toStringAsFixed(1);
   }
 }
 
@@ -770,6 +778,72 @@ class _DailySongTile extends StatelessWidget {
 // ═══════════════════════════════════════════════════════
 // 通用组件
 // ═══════════════════════════════════════════════════════
+
+/// 最多收听条目
+class _ListeningTile extends StatelessWidget {
+  final String path;
+  final int totalSeconds;
+  final int? rank;
+
+  const _ListeningTile({
+    required this.path,
+    required this.totalSeconds,
+    this.rank,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final audio = StatisticsService.findAudioByPath(path);
+    final scheme = Theme.of(context).colorScheme;
+
+    return ListTile(
+      leading: rank != null
+          ? SizedBox(
+              width: 32,
+              child: Center(
+                child: Text(
+                  "#$rank",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: rank! <= 3 ? scheme.primary : null,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            )
+          : null,
+      title: Text(
+        audio?.title ?? path.split("\\").last,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontSize: 14),
+      ),
+      subtitle: Text(
+        [
+          if (audio != null) audio.artist,
+          StatisticsService.formatDuration(totalSeconds),
+        ].join(" · "),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+      ),
+      trailing: Text(
+        StatisticsService.formatDuration(totalSeconds),
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: scheme.primary,
+          fontSize: 13,
+        ),
+      ),
+      onTap: audio != null
+          ? () => context.push(
+                "${app_paths.AUDIOS_PAGE}/detail",
+                extra: audio,
+              )
+          : null,
+    );
+  }
+}
 
 class _SectionHeader extends StatelessWidget {
   final String title;

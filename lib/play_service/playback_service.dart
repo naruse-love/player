@@ -69,7 +69,9 @@ class PlaybackService extends ChangeNotifier {
           !_hasIncrementedForCurrentSong &&
           nowPlaying != null) {
         _hasIncrementedForCurrentSong = true;
-        StatisticsService.instance.incrementPlayCount(nowPlaying!.path);
+        final listenedSecs = (progress - _playStartPosition).round();
+        StatisticsService.instance
+            .incrementPlayCount(nowPlaying!.path, listenedSeconds: listenedSecs);
       }
     });
   }
@@ -83,6 +85,9 @@ class PlaybackService extends ChangeNotifier {
 
   /// 防止同一首歌重复增加播放次数
   bool _hasIncrementedForCurrentSong = false;
+
+  /// 当前歌曲开始播放时的位置（秒），用于计算实际听歌时长
+  double _playStartPosition = 0;
 
   /// 独占模式
   void useExclusiveMode(bool exclusive) {
@@ -140,6 +145,7 @@ class PlaybackService extends ChangeNotifier {
       _playlistIndex = audioIndex;
       nowPlaying = playlist[audioIndex];
       _hasIncrementedForCurrentSong = false;
+      _playStartPosition = _player.position;
       _player.setSource(nowPlaying!.path);
       setVolumeDsp(AppPreference.instance.playbackPref.volumeDsp);
 
