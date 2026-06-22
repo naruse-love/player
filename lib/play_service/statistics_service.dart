@@ -126,7 +126,7 @@ class StatisticsService extends ChangeNotifier {
   /// 获取指定日期范围内的所有播放记录（按时间降序）
   List<PlayRecord> queryByDateRange(DateTime start, DateTime end) {
     return allRecords.where((r) {
-      return r.playedAt.isAfter(start) && r.playedAt.isBefore(end);
+      return r.playedAt.isAfter(start) && !r.playedAt.isAfter(end);
     }).toList();
   }
 

@@ -17,6 +17,9 @@ enum DateRangePreset {
   const DateRangePreset(this.label);
 }
 
+/// 直方图分辨率
+enum _ChartGranularity { hourly, daily, monthly }
+
 class StatisticsPage extends StatefulWidget {
   const StatisticsPage({super.key});
 
@@ -43,13 +46,18 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
   void _onStatsChanged() => setState(() {});
 
+  // ─── 日期范围计算 ───────────────────────────────────
+
+  /// 时段开始（当天 00:00:00）
   DateTime get _rangeStart {
     final now = DateTime.now();
     switch (_selectedPreset) {
       case DateRangePreset.today:
         return DateTime(now.year, now.month, now.day);
       case DateRangePreset.thisWeek:
-        return now.subtract(Duration(days: now.weekday - 1));
+        // 周一为周起始，取周一 00:00:00
+        final monday = now.subtract(Duration(days: now.weekday - 1));
+        return DateTime(monday.year, monday.month, monday.day);
       case DateRangePreset.thisMonth:
         return DateTime(now.year, now.month, 1);
       case DateRangePreset.lastMonth:
@@ -62,18 +70,56 @@ class _StatisticsPageState extends State<StatisticsPage> {
     }
   }
 
+  /// 时段结束（当天 23:59:59）
   DateTime get _rangeEnd {
     final now = DateTime.now();
     switch (_selectedPreset) {
       case DateRangePreset.today:
-        return now.add(const Duration(days: 1));
+        return DateTime(now.year, now.month, now.day, 23, 59, 59);
+      case DateRangePreset.thisWeek:
+        // 周日 23:59:59
+        final sunday = now.add(Duration(days: 7 - now.weekday));
+        return DateTime(sunday.year, sunday.month, sunday.day, 23, 59, 59);
+      case DateRangePreset.thisMonth:
+        return DateTime(now.year, now.month + 1, 0, 23, 59, 59);
       case DateRangePreset.lastMonth:
         final firstOfThis = DateTime(now.year, now.month, 1);
-        return firstOfThis;
+        return DateTime(firstOfThis.year, firstOfThis.month, 0, 23, 59, 59);
+      case DateRangePreset.allTime:
+        return now;
       case DateRangePreset.custom:
-        return (_customEnd ?? now).add(const Duration(days: 1));
-      default:
-        return now.add(const Duration(days: 1));
+        return DateTime(
+            _customEnd!.year, _customEnd!.month, _customEnd!.day, 23, 59, 59);
+    }
+  }
+
+  _ChartGranularity get _granularity {
+    switch (_selectedPreset) {
+      case DateRangePreset.today:
+        return _ChartGranularity.hourly;
+      case DateRangePreset.thisWeek:
+        return _ChartGranularity.daily;
+      case DateRangePreset.thisMonth:
+      case DateRangePreset.lastMonth:
+        return _ChartGranularity.daily;
+      case DateRangePreset.allTime:
+        return _ChartGranularity.monthly;
+      case DateRangePreset.custom:
+        final days = _rangeEnd.difference(_rangeStart).inDays;
+        if (days <= 1) return _ChartGranularity.hourly;
+        if (days <= 31) return _ChartGranularity.daily;
+        return _ChartGranularity.monthly;
+    }
+  }
+
+  String get _chartTitle {
+    switch (_granularity) {
+      case _ChartGranularity.hourly:
+        return "按小时";
+      case _ChartGranularity.daily:
+        return "按天";
+      case _ChartGranularity.monthly:
+        return "按月";
     }
   }
 
@@ -99,14 +145,101 @@ class _StatisticsPageState extends State<StatisticsPage> {
     }
   }
 
+  // ─── 直方图数据 ─────────────────────────────────────
+
+  List<_ChartBin> _buildChartData(StatisticsService stats) {
+    switch (_granularity) {
+      case _ChartGranularity.hourly:
+        return _buildHourlyBins(stats);
+      case _ChartGranularity.daily:
+        return _buildDailyBins(stats);
+      case _ChartGranularity.monthly:
+        return _buildMonthlyBins(stats);
+    }
+  }
+
+  List<_ChartBin> _buildHourlyBins(StatisticsService stats) {
+    final bins = <_ChartBin>[];
+    final start = _rangeStart;
+    final end = _rangeEnd;
+    final records = stats.queryByDateRange(start, end);
+
+    for (var h = 0; h < 24; h++) {
+      final hourStart = DateTime(start.year, start.month, start.day, h);
+      final hourEnd = DateTime(start.year, start.month, start.day, h, 59, 59);
+      final count = records
+          .where((r) =>
+              !r.playedAt.isBefore(hourStart) && r.playedAt.isBefore(hourEnd.add(const Duration(seconds: 1))))
+          .length;
+      bins.add(_ChartBin(label: "${h.toString().padLeft(2, '0')}:00", count: count));
+    }
+    return bins;
+  }
+
+  List<_ChartBin> _buildDailyBins(StatisticsService stats) {
+    final bins = <_ChartBin>[];
+    final start = _rangeStart;
+    final end = _rangeEnd;
+    final records = stats.queryByDateRange(start, end);
+    final days = end.difference(start).inDays + 1;
+
+    for (var i = 0; i < days; i++) {
+      final dayStart = DateTime(start.year, start.month, start.day + i);
+      final dayEnd = DateTime(start.year, start.month, start.day + i, 23, 59, 59);
+      final count = records
+          .where((r) =>
+              !r.playedAt.isBefore(dayStart) && r.playedAt.isBefore(dayEnd.add(const Duration(seconds: 1))))
+          .length;
+      final label = _granularity == _ChartGranularity.monthly
+          ? "${dayStart.month}/${dayStart.day}"
+          : _shortWeekday(dayStart.weekday);
+      bins.add(_ChartBin(label: label, count: count));
+    }
+    return bins;
+  }
+
+  List<_ChartBin> _buildMonthlyBins(StatisticsService stats) {
+    final bins = <_ChartBin>[];
+    final start = _rangeStart;
+    final records = stats.queryByDateRange(start, _rangeEnd);
+
+    // 按年份分组，取所有有数据的月份
+    final monthSet = <String>{};
+    for (var r in records) {
+      monthSet.add("${r.playedAt.year}-${r.playedAt.month}");
+    }
+
+    if (monthSet.isEmpty) return [];
+
+    final sortedMonths = monthSet.toList()..sort();
+    for (var ym in sortedMonths) {
+      final parts = ym.split("-");
+      final year = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final monthStart = DateTime(year, month, 1);
+      final monthEnd = DateTime(year, month + 1, 0, 23, 59, 59);
+      final count = records
+          .where((r) =>
+              !r.playedAt.isBefore(monthStart) && r.playedAt.isBefore(monthEnd.add(const Duration(seconds: 1))))
+          .length;
+      bins.add(_ChartBin(label: "${year}/${month.toString().padLeft(2, '0')}", count: count));
+    }
+    return bins;
+  }
+
+  String _shortWeekday(int wd) {
+    const days = ["", "一", "二", "三", "四", "五", "六", "日"];
+    return days[wd];
+  }
+
   @override
   Widget build(BuildContext context) {
     final stats = StatisticsService.instance;
     final records = stats.queryByDateRange(_rangeStart, _rangeEnd);
     final grouped = stats.getGroupedByDay();
     final topSongs = stats.getCountByDateRange(_rangeStart, _rangeEnd);
+    final chartBins = _buildChartData(stats);
 
-    // 统计摘要
     final totalPlays = records.length;
     final uniqueSongs = topSongs.length;
     final top5 = topSongs.entries.toList()
@@ -126,7 +259,23 @@ class _StatisticsPageState extends State<StatisticsPage> {
           // 摘要卡片
           _buildSummaryCards(context, totalPlays, uniqueSongs),
 
-          // 时间段内 Top 歌曲
+          // 直方图
+          if (chartBins.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 4),
+              child: Text(
+                _chartTitle,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ),
+            _PlayChart(bins: chartBins),
+          ],
+
+          // 时段内 Top 歌曲
           if (top5.isNotEmpty) ...[
             const _SectionHeader(title: "本时段热门"),
             ...top5.take(10).map((entry) => _StatTile(
@@ -150,16 +299,14 @@ class _StatisticsPageState extends State<StatisticsPage> {
             )
           else
             ...grouped.entries.take(60).map((dayEntry) {
-              // 只显示在选中范围内的天数
-              final day = dayEntry.key;
               final dayRecords = dayEntry.value.where((r) {
                 return r.playedAt.isAfter(_rangeStart) &&
-                    r.playedAt.isBefore(_rangeEnd);
+                    r.playedAt.isBefore(_rangeEnd.add(const Duration(seconds: 1)));
               }).toList();
               if (dayRecords.isEmpty) return const SizedBox.shrink();
 
               return _DayGroup(
-                dateKey: day,
+                dateKey: dayEntry.key,
                 records: dayRecords,
               );
             }),
@@ -188,7 +335,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
                 child: Row(
                   children: [
                     if (_selectedPreset == p)
-                      Icon(Icons.check, size: 18, color: Theme.of(context).colorScheme.primary),
+                      Icon(Icons.check, size: 18,
+                          color: Theme.of(context).colorScheme.primary),
                     const SizedBox(width: 8),
                     Text(p.label),
                   ],
@@ -229,10 +377,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
           const SizedBox(width: 8),
           Text(
             dateLabel,
-            style: TextStyle(
-              fontSize: 14,
-              color: scheme.onSurfaceVariant,
-            ),
+            style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
           ),
           const Spacer(),
           TextButton.icon(
@@ -270,19 +415,14 @@ class _StatisticsPageState extends State<StatisticsPage> {
               color: scheme.tertiary,
             ),
           ),
-          if (_selectedPreset == DateRangePreset.allTime ||
-              _selectedPreset == DateRangePreset.lastMonth ||
-              _selectedPreset == DateRangePreset.custom) ...[
-            const SizedBox(width: 12),
-            Expanded(
-              child: _SummaryCard(
-                icon: Icons.trending_up,
-                label: "日均",
-                value: _calcDailyAvg(totalPlays),
-                color: scheme.secondary,
-              ),
+          Expanded(
+            child: _SummaryCard(
+              icon: Icons.trending_up,
+              label: "日均",
+              value: _calcDailyAvg(totalPlays),
+              color: scheme.secondary,
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -291,10 +431,158 @@ class _StatisticsPageState extends State<StatisticsPage> {
   String _calcDailyAvg(int total) {
     final days = _rangeEnd.difference(_rangeStart).inDays;
     if (days <= 0) return "$total";
-    final avg = total / days;
+    final avg = total / (days + 1);
     return avg.toStringAsFixed(1);
   }
 }
+
+// ═══════════════════════════════════════════════════════
+// 直方图组件
+// ═══════════════════════════════════════════════════════
+
+class _ChartBin {
+  final String label;
+  final int count;
+  _ChartBin({required this.label, required this.count});
+}
+
+class _PlayChart extends StatelessWidget {
+  final List<_ChartBin> bins;
+  const _PlayChart({required this.bins});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final maxCount = bins.fold(0, (p, b) => b.count > p ? b.count : p);
+    if (maxCount == 0) return const SizedBox.shrink();
+
+    const barWidth = 32.0;
+    const barGap = 6.0;
+    final chartWidth = bins.length * (barWidth + barGap) + 32;
+
+    return SizedBox(
+      height: 200,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: SizedBox(
+          width: chartWidth,
+          child: CustomPaint(
+            painter: _ChartPainter(
+              bins: bins,
+              maxCount: maxCount,
+              barWidth: barWidth,
+              barGap: barGap,
+              color: scheme.primary,
+              surfaceColor: scheme.surfaceContainerLow,
+              onSurfaceVariant: scheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChartPainter extends CustomPainter {
+  final List<_ChartBin> bins;
+  final int maxCount;
+  final double barWidth;
+  final double barGap;
+  final Color color;
+  final Color surfaceColor;
+  final Color onSurfaceVariant;
+
+  _ChartPainter({
+    required this.bins,
+    required this.maxCount,
+    required this.barWidth,
+    required this.barGap,
+    required this.color,
+    required this.surfaceColor,
+    required this.onSurfaceVariant,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final chartTop = 20.0;
+    const labelHeight = 20.0;
+    final chartBottom = size.height - labelHeight;
+    final chartHeight = chartBottom - chartTop;
+
+    final barPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final bgPaint = Paint()
+      ..color = surfaceColor
+      ..style = PaintingStyle.fill;
+
+    // 横格线
+    final gridPaint = Paint()
+      ..color = onSurfaceVariant.withValues(alpha: 0.15)
+      ..strokeWidth = 0.5;
+
+    for (var i = 0; i <= 4; i++) {
+      final y = chartTop + chartHeight * i / 4;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    }
+
+    for (var i = 0; i < bins.length; i++) {
+      final bin = bins[i];
+      final x = 16.0 + i * (barWidth + barGap);
+
+      // 柱体背景（零值指示）
+      if (bin.count == 0) {
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(x, chartTop, barWidth, chartHeight),
+            const Radius.circular(3),
+          ),
+          bgPaint,
+        );
+      }
+
+      // 柱体
+      if (maxCount > 0 && bin.count > 0) {
+        final barHeight = chartHeight * bin.count / maxCount;
+        final barTop = chartBottom - barHeight;
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(x, barTop, barWidth, barHeight),
+            const Radius.circular(3),
+          ),
+          barPaint,
+        );
+      }
+
+      // 标签
+      final label = bin.label;
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: label,
+          style: TextStyle(
+            color: onSurfaceVariant,
+            fontSize: 9,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: barWidth + 8);
+      textPainter.paint(
+        canvas,
+        Offset(x + barWidth / 2 - textPainter.width / 2, chartBottom + 2),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ChartPainter oldDelegate) =>
+      bins != oldDelegate.bins || maxCount != oldDelegate.maxCount;
+}
+
+// ═══════════════════════════════════════════════════════
+// 摘要卡片
+// ═══════════════════════════════════════════════════════
 
 class _SummaryCard extends StatelessWidget {
   final IconData icon;
@@ -343,15 +631,15 @@ class _SummaryCard extends StatelessWidget {
   }
 }
 
-/// 每日播放分组
+// ═══════════════════════════════════════════════════════
+// 每日播放分组
+// ═══════════════════════════════════════════════════════
+
 class _DayGroup extends StatelessWidget {
   final String dateKey;
   final List<PlayRecord> records;
 
-  const _DayGroup({
-    required this.dateKey,
-    required this.records,
-  });
+  const _DayGroup({required this.dateKey, required this.records});
 
   @override
   Widget build(BuildContext context) {
@@ -363,7 +651,6 @@ class _DayGroup extends StatelessWidget {
         dt.month == now.month &&
         dt.day == now.day;
 
-    // 统计当天每首歌的播放次数
     final songCounts = <String, int>{};
     for (var r in records) {
       songCounts[r.path] = (songCounts[r.path] ?? 0) + 1;
@@ -399,9 +686,7 @@ class _DayGroup extends StatelessWidget {
             ],
           ),
         ),
-        // 每首歌在当天的播放记录
         ...songCounts.entries.map((entry) {
-          // 获取该歌曲当天的具体播放时间列表
           final times = records
               .where((r) => r.path == entry.key)
               .map((r) =>
@@ -419,7 +704,6 @@ class _DayGroup extends StatelessWidget {
   }
 }
 
-/// 每日歌曲条目
 class _DailySongTile extends StatelessWidget {
   final String path;
   final int count;
@@ -485,6 +769,10 @@ class _DailySongTile extends StatelessWidget {
   }
 }
 
+// ═══════════════════════════════════════════════════════
+// 通用组件
+// ═══════════════════════════════════════════════════════
+
 class _SectionHeader extends StatelessWidget {
   final String title;
   const _SectionHeader({required this.title});
@@ -506,7 +794,6 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// 通用统计条目（带排名）
 class _StatTile extends StatelessWidget {
   final String path;
   final int playCount;
@@ -548,7 +835,7 @@ class _StatTile extends StatelessWidget {
       subtitle: Text(
         [
           if (audio != null) audio.artist,
-          "${playCount} 次",
+          "$playCount 次",
         ].join(" · "),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
