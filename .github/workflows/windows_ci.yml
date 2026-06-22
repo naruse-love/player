@@ -31,13 +31,13 @@ jobs:
         mkdir -p build\windows\x64\runner\Release\BASS
         
         # download BASS add-ons from UN4SEEN
-        curl -o bass.zip https://www.un4seen.com/files/bass24.zip
-        curl -o bassape24.zip https://www.un4seen.com/files/bassape24.zip
-        curl -o bassdsd24.zip https://www.un4seen.com/files/bassdsd24.zip
-        curl -o bassflac24.zip https://www.un4seen.com/files/bassflac24.zip
-        curl -o bassmidi24.zip https://www.un4seen.com/files/bassmidi24.zip
-        curl -o bassopus24.zip https://www.un4seen.com/files/bassopus24.zip
-        curl -o basswv24.zip https://www.un4seen.com/files/basswv24.zip
+        curl.exe -o bass.zip https://www.un4seen.com/files/bass24.zip
+        curl.exe -o bassape24.zip https://www.un4seen.com/files/bassape24.zip
+        curl.exe -o bassdsd24.zip https://www.un4seen.com/files/bassdsd24.zip
+        curl.exe -o bassflac24.zip https://www.un4seen.com/files/bassflac24.zip
+        curl.exe -o bassmidi24.zip https://www.un4seen.com/files/bassmidi24.zip
+        curl.exe -o bassopus24.zip https://www.un4seen.com/files/bassopus24.zip
+        curl.exe -o basswv24.zip https://www.un4seen.com/files/basswv24.zip
         
         Expand-Archive -Path bass.zip -DestinationPath build\tmp -Force
         Expand-Archive -Path bassape24.zip -DestinationPath build\tmp -Force
@@ -47,11 +47,29 @@ jobs:
         Expand-Archive -Path bassopus24.zip -DestinationPath build\tmp -Force
         Expand-Archive -Path basswv24.zip -DestinationPath build\tmp -Force
         
-        # mv build\tmp\x64\* build\windows\x64\runner\Release\
         mv build\tmp\x64\* build\windows\x64\runner\Release\BASS\
+
+    - name: List Release directory
+      run: Get-ChildItem -Recurse build\windows\x64\runner\Release | Select-Object Mode, Length, Name | Format-Table -AutoSize
+
+    - name: Download desktop_lyric
+      shell: pwsh
+      run: |
+        $tag = (curl.exe -sL "https://api.github.com/repos/Ferry-200/desktop_lyric/releases/latest" | Select-String -Pattern '"tag_name":\s*"([^"]+)"' | % { $_.Matches.Groups[1].Value })
+        if (-not $tag) { Write-Host "No release found"; exit 0 }
+        Write-Host "Downloading desktop_lyric $tag"
+        curl.exe -sL "https://github.com/Ferry-200/desktop_lyric/releases/download/$tag/desktop_lyric-windows-x64.zip" -o desktop_lyric.zip
+        if (Test-Path desktop_lyric.zip) {
+          Expand-Archive -Path desktop_lyric.zip -DestinationPath build\windows\x64\runner\Release\desktop_lyric -Force
+        }
+
+    - name: Package artifact
+      shell: pwsh
+      run: |
+        Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath coriander_player.zip -Force
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: "Coriander Player Test Version"
-        path: build\windows\x64\runner\Release
+        path: coriander_player.zip
