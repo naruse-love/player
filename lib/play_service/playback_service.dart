@@ -74,14 +74,11 @@ class PlaybackService extends ChangeNotifier {
         _maxTrackedPosition = progress;
       }
 
-      // 播放进度过半时增加一次播放计数
+      // 播放进度过半时标记（最终在 _finalizePlaySession 中统一写入）
       if (_player.length > 0 &&
           progress >= _player.length / 2 &&
           !_hasIncrementedForCurrentSong) {
         _hasIncrementedForCurrentSong = true;
-        // 此时 _listenedThisSession 就是本次实际收听总时长
-        StatisticsService.instance.incrementPlayCount(
-            nowPlaying!.path, listenedSeconds: _listenedThisSession.round());
       }
     });
   }
