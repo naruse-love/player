@@ -190,9 +190,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
           .where((r) =>
               !r.playedAt.isBefore(dayStart) && r.playedAt.isBefore(dayEnd.add(const Duration(seconds: 1))))
           .length;
-      final label = _granularity == _ChartGranularity.monthly
-          ? "${dayStart.month}/${dayStart.day}"
-          : _shortWeekday(dayStart.weekday);
+      final label = _shortWeekday(dayStart.weekday);
       bins.add(_ChartBin(label: label, count: count));
     }
     return bins;

@@ -78,8 +78,44 @@ jobs:
       run: |
         Compress-Archive -Path build\windows\x64\runner\Release\ -DestinationPath coriander_player.zip -Force
 
+    - name: Build SFX installer
+      shell: pwsh
+      run: |
+        # 编译 C# 自解压程序，内嵌 ZIP 包
+        $tmpDir = "build\sfx_build"
+        New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null
+        
+        # 复制必要文件
+        Copy-Item .github\workflows\sfx_installer.cs $tmpDir\
+        Copy-Item coriander_player.zip $tmpDir\
+        if (Test-Path "app_icon.ico") { Copy-Item app_icon.ico $tmpDir\ }
+        
+        # 查找 csc.exe
+        $csc = Get-ChildItem -Path "${env:windir}\Microsoft.NET\Framework64" -Recurse -Filter "csc.exe" | Select-Object -First 1 -ExpandProperty FullName
+        if (-not $csc) {
+          $csc = Get-ChildItem -Path "${env:windir}\Microsoft.NET\Framework" -Recurse -Filter "csc.exe" | Select-Object -First 1 -ExpandProperty FullName
+        }
+        Write-Host "Using C# compiler: $csc"
+        
+        $outExe = "CorianderPlayer_Upgrade_v1.5.2.exe"
+        Push-Location $tmpDir
+        $iconOpt = if (Test-Path "app_icon.ico") { "/win32icon:app_icon.ico" } else { "" }
+        & $csc /target:winexe /resource:coriander_player.zip /out:$outExe $iconOpt sfx_installer.cs /reference:"System.IO.Compression.dll" /reference:"System.IO.Compression.FileSystem.dll" 2>&1 | Write-Host
+        Pop-Location
+        
+        # 复制结果到输出目录
+        if (Test-Path "$tmpDir\$outExe") {
+          Copy-Item "$tmpDir\$outExe" . -Force
+          Write-Host "=== SFX 安装包 ==="
+          Get-ChildItem $outExe | Select-Object Length, Name
+        } else {
+          Write-Host "SFX 构建失败，仅上传 ZIP 包"
+        }
+
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: "Coriander Player Test Version"
-        path: coriander_player.zip
+        name: "Coriander Player v1.5.2"
+        path: |
+          coriander_player.zip
+          CorianderPlayer_Upgrade_v1.5.2.exe
