@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:coriander_player/app_preference.dart';
+import 'package:coriander_player/app_settings.dart';
 import 'package:coriander_player/library/audio_library.dart';
 import 'package:coriander_player/play_service/play_service.dart';
 import 'package:coriander_player/play_service/statistics_service.dart';
@@ -63,15 +66,27 @@ class PlaybackService extends ChangeNotifier {
     positionStream.listen((progress) {
       _smtc.updateTimeProperties(progress: (progress * 1000).floor());
 
-      // 播放进度过半时增加播放次数
+      if (nowPlaying == null) return;
+
+      // 连续跟踪实际收听时长
+      if (progress > _maxTrackedPosition) {
+        _listenedThisSession += progress - _maxTrackedPosition;
+        _maxTrackedPosition = progress;
+
+        // 每积累 10 秒落盘一次
+        if (_listenedThisSession >= _lastFlushedListening + 10) {
+          _flushListeningTime();
+        }
+      }
+
+      // 播放进度过半时增加播放次数（完整播放才算一次）
       if (_player.length > 0 &&
           progress >= _player.length / 2 &&
-          !_hasIncrementedForCurrentSong &&
-          nowPlaying != null) {
+          !_hasIncrementedForCurrentSong) {
         _hasIncrementedForCurrentSong = true;
-        final listenedSecs = (progress - _playStartPosition).round();
-        StatisticsService.instance
-            .incrementPlayCount(nowPlaying!.path, listenedSeconds: listenedSecs);
+        StatisticsService.instance.incrementPlayCount(
+            nowPlaying!.path, listenedSeconds: _listenedThisSession.round());
+        _lastFlushedListening = _listenedThisSession;
       }
     });
   }
@@ -86,8 +101,22 @@ class PlaybackService extends ChangeNotifier {
   /// 防止同一首歌重复增加播放次数
   bool _hasIncrementedForCurrentSong = false;
 
-  /// 当前歌曲开始播放时的位置（秒），用于计算实际听歌时长
-  double _playStartPosition = 0;
+  /// 连续听歌时长跟踪
+  /// 当前会话中到达的最大进度位置（秒）
+  double _maxTrackedPosition = 0;
+  /// 当前歌曲已积累的收听秒数（浮点精确）
+  double _listenedThisSession = 0;
+  /// 上次落盘时的 listening 值
+  double _lastFlushedListening = 0;
+
+  /// 将当前积累的收听时长写入统计
+  void _flushListeningTime() {
+    if (nowPlaying == null || _listenedThisSession <= _lastFlushedListening) return;
+    final delta = _listenedThisSession - _lastFlushedListening;
+    if (delta < 1) return;
+    _lastFlushedListening = _listenedThisSession;
+    StatisticsService.instance.addListeningTime(nowPlaying!.path, delta.round());
+  }
 
   /// 独占模式
   void useExclusiveMode(bool exclusive) {
@@ -142,10 +171,15 @@ class PlaybackService extends ChangeNotifier {
   /// 6. 通知并更新主题色
   void _loadAndPlay(int audioIndex, List<Audio> playlist) {
     try {
+      // 切歌前先把之前积累的收听时长写入
+      _flushListeningTime();
+
       _playlistIndex = audioIndex;
       nowPlaying = playlist[audioIndex];
       _hasIncrementedForCurrentSong = false;
-      _playStartPosition = _player.position;
+      _maxTrackedPosition = 0;
+      _listenedThisSession = 0;
+      _lastFlushedListening = 0;
       _player.setSource(nowPlaying!.path);
       setVolumeDsp(AppPreference.instance.playbackPref.volumeDsp);
 
@@ -329,9 +363,86 @@ class PlaybackService extends ChangeNotifier {
   }
 
   void close() {
+    _flushListeningTime();
+    _savePlaylistState();
     _playerStateStreamSub.cancel();
     _smtcEventStreamSub.cancel();
     _player.free();
     _smtc.close();
+  }
+
+  // ─── 播放列表持久化 ──────────────────────────────────
+
+  /// 保存当前播放列表和正在播放的歌曲到文件
+  void _savePlaylistState() {
+    if (playlist.value.isEmpty) return;
+    try {
+      _savePlaylistStateAsync();
+    } catch (_) {}
+  }
+
+  Future<void> _savePlaylistStateAsync() async {
+    try {
+      final supportPath = (await getAppDataDir()).path;
+      final file = File("$supportPath\\playlist_state.json");
+      final data = {
+        "playlist": playlist.value.map((a) => a.path).toList(),
+        "current_index": _playlistIndex ?? 0,
+        "shuffle": _shuffle.value,
+        "play_mode": _playMode.value.name,
+        "current_position": _player.position,
+      };
+      await file.writeAsString(json.encode(data));
+    } catch (_) {}
+  }
+
+  /// 从文件恢复播放列表和正在播放的歌曲
+  /// 返回是否恢复成功（可继续播放）
+  Future<bool> restorePlaylistState() async {
+    try {
+      final supportPath = (await getAppDataDir()).path;
+      final file = File("$supportPath\\playlist_state.json");
+      if (!await file.exists()) return false;
+
+      final jsonStr = await file.readAsString();
+      final Map data = json.decode(jsonStr);
+      final paths = (data["playlist"] as List).cast<String>();
+      final savedIndex = data["current_index"] as int? ?? 0;
+      final savedShuffle = data["shuffle"] as bool? ?? false;
+      final savedPlayMode = data["play_mode"] as String?;
+      final savedPosition = data["current_position"] as num? ?? 0.0;
+
+      if (paths.isEmpty) return false;
+
+      // 将路径还原为 Audio 对象
+      final restored = <Audio>[];
+      for (var p in paths) {
+        final audio = StatisticsService.findAudioByPath(p);
+        if (audio != null) restored.add(audio);
+      }
+      if (restored.isEmpty) return false;
+
+      playlist.value = List.from(restored);
+      _playlistBackup = List.from(restored);
+      _shuffle.value = savedShuffle;
+
+      if (savedPlayMode != null) {
+        final mode = PlayMode.fromString(savedPlayMode);
+        if (mode != null) _playMode.value = mode;
+      }
+
+      // 恢复播放
+      final index = savedIndex.clamp(0, restored.length - 1);
+      _loadAndPlay(index, restored);
+      // 恢复到上次的进度位置
+      if (savedPosition > 0) {
+        _player.seek(savedPosition.toDouble());
+        _maxTrackedPosition = savedPosition.toDouble();
+      }
+
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 }

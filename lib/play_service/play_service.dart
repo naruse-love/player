@@ -19,4 +19,9 @@ class PlayService {
     desktopLyricService.killDesktopLyric();
     playbackService.close();
   }
+
+  /// 启动时恢复上次的播放列表和进度
+  Future<void> restorePlaylist() async {
+    await playbackService.restorePlaylistState();
+  }
 }

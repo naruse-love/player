@@ -4,6 +4,7 @@ import 'package:coriander_player/app_preference.dart';
 import 'package:coriander_player/app_settings.dart';
 import 'package:coriander_player/entry.dart';
 import 'package:coriander_player/hotkeys_helper.dart';
+import 'package:coriander_player/play_service/play_service.dart';
 import 'package:coriander_player/play_service/statistics_service.dart';
 import 'package:coriander_player/src/rust/api/logger.dart';
 import 'package:coriander_player/src/rust/frb_generated.dart';
@@ -74,6 +75,9 @@ Future<void> main() async {
   final welcome = !File("$supportPath\\index.json").existsSync();
 
   await StatisticsService.instance.load();
+
+  // 恢复上次退出时的播放列表和进度
+  await PlayService.instance.restorePlaylist();
 
   await initWindow();
 
