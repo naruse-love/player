@@ -74,7 +74,8 @@ class SfxInstaller
             if (installDir == null)
             {
                 Console.Write("[询问] 未找到 Coriander Player 安装目录，请输入路径: ");
-                installDir = Console.ReadLine()?.Trim();
+                var input = Console.ReadLine();
+                installDir = input != null ? input.Trim() : null;
                 if (string.IsNullOrEmpty(installDir) || !Directory.Exists(installDir))
                 {
                     Console.WriteLine("[错误] 路径无效。");
