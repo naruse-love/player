@@ -34,6 +34,7 @@ jobs:
         # 下载 BASS 主库和插件
         $urls = @{
             "bass24.zip"     = "https://www.un4seen.com/files/bass24.zip"
+            "basswasapi24.zip" = "https://www.un4seen.com/files/basswasapi24.zip"
             "bassape24.zip"  = "https://www.un4seen.com/files/bassape24.zip"
             "bassdsd24.zip"  = "https://www.un4seen.com/files/bassdsd24.zip"
             "bassflac24.zip" = "https://www.un4seen.com/files/bassflac24.zip"
