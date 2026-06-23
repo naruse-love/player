@@ -1,6 +1,4 @@
-use std::fs::File;
-use std::io::BufWriter;
-
+use lofty::config::WriteOptions;
 use lofty::prelude::*;
 
 /// 将歌词写入音频文件的标签中
@@ -15,11 +13,9 @@ pub fn set_lyric_to_path(path: String, lyric: String) -> Result<String, String> 
 
     tag.insert_text(ItemKey::Lyrics, lyric);
 
-    // 通过 AudioFile::write_to 写回
-    let file = File::create(&path).map_err(|e| format!("无法创建文件: {e}"))?;
-    let mut writer = BufWriter::new(file);
+    // 通过 AudioFile::save_to_path 写回
     tagged_file
-        .write_to(&mut writer)
+        .save_to_path(&path, WriteOptions::default())
         .map_err(|e| format!("写入歌词失败: {e}"))?;
 
     Ok("歌词已保存到文件".to_string())
