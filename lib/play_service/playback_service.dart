@@ -167,8 +167,8 @@ class PlaybackService extends ChangeNotifier {
   /// 6. 通知并更新主题色
   void _loadAndPlay(int audioIndex, List<Audio> playlist) {
     try {
-      // 切歌前先把之前的收听会话结束
-      _finalizePlaySession();
+      // 切歌前先把之前的收听会话结束（传递是否过半标记）
+      _finalizePlaySession(incrementCount: _hasIncrementedForCurrentSong);
 
       _playlistIndex = audioIndex;
       nowPlaying = playlist[audioIndex];

@@ -88,8 +88,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
       case DateRangePreset.allTime:
         return now;
       case DateRangePreset.custom:
-        return DateTime(
-            _customEnd!.year, _customEnd!.month, _customEnd!.day, 23, 59, 59);
+        final end = _customEnd ?? now;
+        return DateTime(end.year, end.month, end.day, 23, 59, 59);
     }
   }
 
@@ -328,14 +328,16 @@ class _StatisticsPageState extends State<StatisticsPage> {
     return PopupMenuButton<DateRangePreset>(
       icon: const Icon(Icons.date_range),
       tooltip: "选择时间范围",
-      onSelected: (preset) {
-        setState(() {
-          _selectedPreset = preset;
-          if (preset != DateRangePreset.custom) {
+      onSelected: (preset) async {
+        if (preset == DateRangePreset.custom) {
+          await _pickDateRange();
+        } else {
+          setState(() {
+            _selectedPreset = preset;
             _customStart = null;
             _customEnd = null;
-          }
-        });
+          });
+        }
       },
       itemBuilder: (_) => [
         ...DateRangePreset.values.where((p) => p != DateRangePreset.custom).map(
@@ -372,8 +374,13 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
     String dateLabel;
     if (_selectedPreset == DateRangePreset.custom) {
-      dateLabel =
-          "${_customStart!.month}/${_customStart!.day} - ${_customEnd!.month}/${_customEnd!.day}";
+      final s = _customStart;
+      final e = _customEnd;
+      if (s != null && e != null) {
+        dateLabel = "${s.month}/${s.day} - ${e.month}/${e.day}";
+      } else {
+        dateLabel = "自定义";
+      }
     } else {
       dateLabel = _selectedPreset.label;
     }
