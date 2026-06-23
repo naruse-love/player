@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:coriander_player/library/audio_library.dart';
 import 'package:coriander_player/lyric/lrc.dart';
 import 'package:coriander_player/lyric/lyric.dart';
+import 'package:coriander_player/lyric/lyric_saver.dart';
 import 'package:coriander_player/lyric/lyric_source.dart';
 import 'package:coriander_player/music_matcher.dart';
 import 'package:coriander_player/page/now_playing_page/component/vertical_lyric_view.dart';
@@ -49,6 +50,30 @@ class _SetLyricSourceBtn extends StatelessWidget {
   final bool? isLocal;
   const _SetLyricSourceBtn({this.isLocal});
 
+  /// 保存当前歌词到 .lrc 文件
+  static Future<void> _saveCurrentLyric(BuildContext context) async {
+    final lyricService = PlayService.instance.lyricService;
+    final nowPlaying = PlayService.instance.playbackService.nowPlaying;
+    if (nowPlaying == null) return;
+
+    final lyric = await lyricService.currLyricFuture;
+    if (lyric == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("当前没有歌词可供保存")),
+        );
+      }
+      return;
+    }
+
+    final ok = await saveLyricToLrcFile(nowPlaying.path, lyric);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ok ? "歌词已保存到本地" : "保存歌词失败")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -70,6 +95,10 @@ class _SetLyricSourceBtn extends StatelessWidget {
             );
           },
           child: const Text("指定默认歌词"),
+        ),
+        MenuItemButton(
+          onPressed: () => _saveCurrentLyric(context),
+          child: const Text("保存歌词到本地"),
         ),
         MenuItemButton(
           onPressed: lyricService.useOnlineLyric,
