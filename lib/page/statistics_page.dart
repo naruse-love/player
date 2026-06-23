@@ -190,7 +190,9 @@ class _StatisticsPageState extends State<StatisticsPage> {
           .where((r) =>
               !r.playedAt.isBefore(dayStart) && r.playedAt.isBefore(dayEnd.add(const Duration(seconds: 1))))
           .length;
-      final label = _shortWeekday(dayStart.weekday);
+      final label = _granularity == _ChartGranularity.monthly
+          ? "${dayStart.month}/${dayStart.day}"
+          : "${dayStart.month}/${dayStart.day}";
       bins.add(_ChartBin(label: label, count: count));
     }
     return bins;
@@ -223,11 +225,6 @@ class _StatisticsPageState extends State<StatisticsPage> {
       bins.add(_ChartBin(label: "${year}/${month.toString().padLeft(2, '0')}", count: count));
     }
     return bins;
-  }
-
-  String _shortWeekday(int wd) {
-    const days = ["", "一", "二", "三", "四", "五", "六", "日"];
-    return days[wd];
   }
 
   @override
@@ -511,7 +508,7 @@ class _ChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final chartTop = 20.0;
+    final chartTop = 30.0;
     const labelHeight = 20.0;
     final chartBottom = size.height - labelHeight;
     final chartHeight = chartBottom - chartTop;
@@ -524,7 +521,29 @@ class _ChartPainter extends CustomPainter {
       ..color = surfaceColor
       ..style = PaintingStyle.fill;
 
-    // 横格线
+    final textStyle = TextStyle(
+      color: onSurfaceVariant,
+      fontSize: 9,
+    );
+    final boldTextStyle = TextStyle(
+      color: onSurfaceVariant,
+      fontSize: 9,
+      fontWeight: FontWeight.w600,
+    );
+
+    // ── Y 轴标注（最大值） ──
+    if (maxCount > 0) {
+      final maxLabel = TextPainter(
+        text: TextSpan(text: "$maxCount", style: boldTextStyle),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      maxLabel.paint(
+        canvas,
+        Offset(size.width - maxLabel.width - 4, chartTop - maxLabel.height / 2),
+      );
+    }
+
+    // ── 横格线 ──
     final gridPaint = Paint()
       ..color = onSurfaceVariant.withValues(alpha: 0.15)
       ..strokeWidth = 0.5;
@@ -532,13 +551,25 @@ class _ChartPainter extends CustomPainter {
     for (var i = 0; i <= 4; i++) {
       final y = chartTop + chartHeight * i / 4;
       canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+      // Y 轴刻度标签
+      if (i > 0 && maxCount > 0) {
+        final val = (maxCount * (4 - i) / 4).round();
+        if (val > 0) {
+          final gridLabel = TextPainter(
+            text: TextSpan(text: "$val", style: textStyle),
+            textDirection: TextDirection.ltr,
+          )..layout();
+          gridLabel.paint(canvas, Offset(2, y - gridLabel.height / 2));
+        }
+      }
     }
 
+    // ── 柱子 ──
     for (var i = 0; i < bins.length; i++) {
       final bin = bins[i];
       final x = 16.0 + i * (barWidth + barGap);
 
-      // 柱体背景（零值指示）
+      // 零值背景
       if (bin.count == 0) {
         canvas.drawRRect(
           RRect.fromRectAndRadius(
@@ -560,23 +591,33 @@ class _ChartPainter extends CustomPainter {
           ),
           barPaint,
         );
+
+        // 数值标签（柱体上方）
+        final valueLabel = TextPainter(
+          text: TextSpan(text: "${bin.count}", style: boldTextStyle.copyWith(
+            color: color,
+            fontSize: 10,
+          )),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        valueLabel.paint(
+          canvas,
+          Offset(
+            x + barWidth / 2 - valueLabel.width / 2,
+            barTop - valueLabel.height - 2,
+          ),
+        );
       }
 
-      // 标签
+      // 底部 X 轴标签
       final label = bin.label;
-      final textPainter = TextPainter(
-        text: TextSpan(
-          text: label,
-          style: TextStyle(
-            color: onSurfaceVariant,
-            fontSize: 9,
-          ),
-        ),
+      final xLabel = TextPainter(
+        text: TextSpan(text: label, style: textStyle),
         textDirection: TextDirection.ltr,
       )..layout(maxWidth: barWidth + 8);
-      textPainter.paint(
+      xLabel.paint(
         canvas,
-        Offset(x + barWidth / 2 - textPainter.width / 2, chartBottom + 2),
+        Offset(x + barWidth / 2 - xLabel.width / 2, chartBottom + 2),
       );
     }
   }

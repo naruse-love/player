@@ -27,8 +27,10 @@ jobs:
       run: |
         # 安装 FRB 代码生成器并重新生成 Dart 绑定
         cargo install flutter_rust_bridge_codegen --version 2.11.1 2>&1
-        cd rust
-        cargo frb dart 2>&1
+        # 使用 standalone binary 而非 cargo subcommand
+        rust\flutter_rust_bridge_codegen generate 2>&1
+        # 如果上面路径不对，尝试 PATH 中的
+        if (-not $?) { flutter_rust_bridge_codegen generate 2>&1 }
 
     - name: Build Windows
       run: flutter build windows
