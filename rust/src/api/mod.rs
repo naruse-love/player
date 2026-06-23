@@ -3,7 +3,6 @@
 //
 
 pub mod tag_reader;
-pub mod tag_writer;
 pub mod smtc_flutter;
 pub mod utils;
 pub mod system_theme;
