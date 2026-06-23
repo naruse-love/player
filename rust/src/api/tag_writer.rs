@@ -1,5 +1,4 @@
 use lofty::prelude::*;
-use lofty::FileType;
 
 /// 将歌词写入音频文件的标签中
 /// 返回成功的消息，失败时返回错误描述
@@ -14,13 +13,11 @@ pub fn set_lyric_to_path(path: String, lyric: String) -> Result<String, String> 
         .ok_or_else(|| "该文件格式不支持标签".to_string())?;
 
     // 设置歌词
-    tag.insert(ItemKey::Lyrics, ItemValue::Text(lyric));
+    tag.insert(lofty::ItemKey::Lyrics, lofty::ItemValue::Text(lyric));
 
-    // 写回文件
-    let file_type = FileType::from_path(&path)
-        .unwrap_or(lofty::FileType::Flac);
+    // 写回文件（save 使用读取时的路径自动确定格式）
     tagged_file
-        .write_to_path(&path, file_type)
+        .save()
         .map_err(|e| format!("写入歌词失败: {e}"))?;
 
     Ok("歌词已保存到文件".to_string())
