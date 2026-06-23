@@ -22,6 +22,14 @@ jobs:
     - name: Get dependencies
       run: flutter pub get
 
+    - name: Generate Rust bindings
+      shell: pwsh
+      run: |
+        # 安装 FRB 代码生成器并重新生成 Dart 绑定
+        cargo install flutter_rust_bridge_codegen --version 2.11.1 2>&1
+        cd rust
+        cargo frb dart 2>&1
+
     - name: Build Windows
       run: flutter build windows
 
