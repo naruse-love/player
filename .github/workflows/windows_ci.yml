@@ -34,8 +34,27 @@ jobs:
         # 生成 Dart 绑定（二进制在 ~/.cargo/bin/ 中，已在 PATH）
         flutter_rust_bridge_codegen generate 2>&1
 
+    - name: Check Rust compilation
+      shell: pwsh
+      run: |
+        Write-Host "=== Running cargo check ==="
+        Push-Location rust
+        $checkResult = cargo check 2>&1
+        $rustExitCode = $LASTEXITCODE
+        Pop-Location
+        
+        if ($rustExitCode -ne 0) {
+            Write-Host "ERROR: cargo check failed with exit code $rustExitCode" -ForegroundColor Red
+            Write-Host $checkResult
+            exit 1
+        }
+        
+        Write-Host "=== Rust compilation passed ===" -ForegroundColor Green
+
     - name: Build Windows
-      run: flutter build windows
+      shell: pwsh
+      run: |
+        flutter build windows --verbose 2>&1
 
     - name: Download dll
       shell: pwsh
