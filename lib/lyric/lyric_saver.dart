@@ -7,13 +7,19 @@ import 'package:coriander_player/src/rust/api/tag_writer.dart';
 String lyricToLrcString(Lyric lyric) {
   final buffer = StringBuffer();
   for (final line in lyric.lines) {
-    if (line is UnsyncLyricLine || line is SyncLyricLine) {
+    String? content;
+    if (line is UnsyncLyricLine) {
+      content = line.content;
+    } else if (line is SyncLyricLine) {
+      content = line.content;
+    }
+    if (content != null) {
       final minutes = line.start.inMinutes;
       final seconds = (line.start.inSeconds % 60);
       final millis = (line.start.inMilliseconds % 1000) ~/ 10;
       final timeStr =
           '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}.${millis.toString().padLeft(2, '0')}';
-      buffer.writeln('[$timeStr]${line.content}');
+      buffer.writeln('[$timeStr]$content');
     }
   }
   return buffer.toString();
