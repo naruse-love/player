@@ -2,7 +2,10 @@ import 'dart:math';
 
 import 'package:coriander_player/library/audio_library.dart';
 import 'package:coriander_player/lyric/lyric.dart';
+import 'package:coriander_player/lyric/qrc.dart';
+import 'package:coriander_player/lyric/krc.dart';
 import 'package:coriander_player/src/rust/api/tag_reader.dart';
+
 
 class LrcLine extends UnsyncLyricLine {
   bool isBlank;
@@ -180,17 +183,61 @@ class Lrc extends Lyric {
 
   /// 只支持读取 ID3V2, VorbisComment, Mp4Ilst 存储的内嵌歌词
   /// 以及相同目录相同文件名的 .lrc 外挂歌词（utf-8 or utf-16）
-  static Future<Lrc?> fromAudioPath(
+  static Future<Lyric?> fromAudioPath(
     Audio belongTo, {
     String? separator = "┃",
   }) async {
-    Lrc? lyric = await getLyricFromPath(path: belongTo.path).then((value) {
+    Lyric? lyric = await getLyricFromPath(path: belongTo.path).then((value) {
       if (value == null) {
         return null;
       }
-      return Lrc.fromLrcText(value, LrcSource.local, separator: separator);
+      return parseLyricText(value, separator: separator);
     });
 
     return lyric;
+  }
+}
+
+Lyric? parseLyricText(String text, {String? separator = "┃"}) {
+  final lines = text.split("\n");
+
+  bool isQrc = false;
+  bool isKrc = false;
+
+  for (final line in lines) {
+    final trimmed = line.trim();
+    if (trimmed.isEmpty) continue;
+
+    // Qrc pattern check: starts with [digits,digits] and contains word(digits,digits)
+    if (trimmed.startsWith(RegExp(r'^\[\d+,\d+\]')) &&
+        trimmed.contains('(') &&
+        trimmed.contains(')')) {
+      isQrc = true;
+      break;
+    }
+
+    // Krc pattern check: starts with [digits,digits] and contains <digits,digits>
+    if (trimmed.startsWith(RegExp(r'^\[\d+,\d+\]')) &&
+        trimmed.contains('<') &&
+        trimmed.contains('>')) {
+      isKrc = true;
+      break;
+    }
+  }
+
+  if (isQrc) {
+    if (text.contains("//trans//")) {
+      final parts = text.split("//trans//");
+      return Qrc.fromQrcText(parts[0].trim(), parts[1].trim());
+    }
+    return Qrc.fromQrcText(text);
+  } else if (isKrc) {
+    if (text.contains("//trans//")) {
+      final parts = text.split("//trans//");
+      return Krc.fromKrcText(parts[0].trim(), parts[1].trim());
+    }
+    return Krc.fromKrcText(text);
+  } else {
+    return Lrc.fromLrcText(text, LrcSource.local, separator: separator);
   }
 }

@@ -5,21 +5,25 @@ import 'package:coriander_player/lyric/lyric.dart';
 class Krc extends Lyric {
   Krc(super.lines);
 
-  static Krc fromKrcText(String krc) {
+  static Krc fromKrcText(String krc, [String? transRawStr]) {
     final List<KrcLine> lines = [];
     String? languageFrame;
 
     final splited = krc.split("\n");
     for (final item in splited) {
-      if (languageFrame == null) {
-        final tag = item.substring(
-          item.indexOf("[") + 1,
-          item.indexOf("]"),
-        );
-        var splitedTag = tag.split(":");
-        final tagName = splitedTag.firstOrNull;
-        if (tagName?.contains("language") == true) {
-          languageFrame = splitedTag[1];
+      if (item.trim().isEmpty) continue;
+      
+      final left = item.indexOf("[");
+      final right = item.indexOf("]");
+      
+      if (left != -1 && right != -1) {
+        if (languageFrame == null) {
+          final tag = item.substring(left + 1, right);
+          var splitedTag = tag.split(":");
+          final tagName = splitedTag.firstOrNull;
+          if (tagName?.contains("language") == true) {
+            languageFrame = splitedTag[1];
+          }
         }
       }
 
@@ -30,7 +34,28 @@ class Krc extends Lyric {
       lines.add(krcLine);
     }
 
-    if (languageFrame != null) {
+    if (transRawStr != null) {
+      int lineIt = 0;
+      final splitedTrans = transRawStr.split("\n");
+      for (var transLine in splitedTrans) {
+        if (lineIt > lines.length - 1) {
+          break;
+        }
+
+        final left = transLine.indexOf("[");
+        final right = transLine.indexOf("]");
+        if (left == -1 || right == -1) continue;
+
+        final timeStr = transLine.substring(left + 1, right);
+        if (int.tryParse(timeStr.split(":").first) != null) {
+          final t = transLine.replaceAll(RegExp(r"\[\d{2}:\d{2}\.\d{2,}\]"), "");
+          if (t.isNotEmpty) {
+            lines[lineIt].translation = t;
+            lineIt += 1;
+          }
+        }
+      }
+    } else if (languageFrame != null) {
       final Map languageMap =
           json.decode(utf8.decode(base64.decode(languageFrame)));
       List trans = [];
@@ -43,7 +68,7 @@ class Krc extends Lyric {
         }
       }
       int linesIt = 0, transIt = 0;
-      while ((linesIt < lines.length) || (transIt < trans.length)) {
+      while ((linesIt < lines.length) && (transIt < trans.length)) {
         lines[linesIt].translation = trans[transIt];
         linesIt += 1;
         transIt += 1;
