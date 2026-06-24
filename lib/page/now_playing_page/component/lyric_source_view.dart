@@ -74,6 +74,30 @@ class _SetLyricSourceBtn extends StatelessWidget {
     }
   }
 
+  /// 保存当前歌词到音频文件标签中
+  static Future<void> _saveCurrentLyricToTag(BuildContext context) async {
+    final lyricService = PlayService.instance.lyricService;
+    final nowPlaying = PlayService.instance.playbackService.nowPlaying;
+    if (nowPlaying == null) return;
+
+    final lyric = await lyricService.currLyricFuture;
+    if (lyric == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("当前没有歌词可供保存")),
+        );
+      }
+      return;
+    }
+
+    final ok = await saveLyricToTag(nowPlaying.path, lyric);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ok ? "歌词已写入歌曲标签" : "写入标签失败")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -99,6 +123,10 @@ class _SetLyricSourceBtn extends StatelessWidget {
         MenuItemButton(
           onPressed: () => _saveCurrentLyric(context),
           child: const Text("保存歌词到本地"),
+        ),
+        MenuItemButton(
+          onPressed: () => _saveCurrentLyricToTag(context),
+          child: const Text("保存歌词到标签"),
         ),
         MenuItemButton(
           onPressed: lyricService.useOnlineLyric,
