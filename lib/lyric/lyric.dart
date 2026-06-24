@@ -1,7 +1,17 @@
+enum LrcSource {
+  local("本地"),
+  web("网络");
+
+  final String name;
+
+  const LrcSource(this.name);
+}
+
 abstract class Lyric {
   List<LyricLine> lines;
+  LrcSource source;
 
-  Lyric(this.lines);
+  Lyric(this.lines, this.source);
 }
 
 abstract class LyricLine {

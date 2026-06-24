@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'package:coriander_player/lyric/lyric.dart';
 
 class Krc extends Lyric {
-  Krc(super.lines);
+  Krc(super.lines, [LrcSource source = LrcSource.web]) : super(source);
 
-  static Krc fromKrcText(String krc, [String? transRawStr]) {
+  static Krc fromKrcText(String krc, [String? transRawStr, LrcSource source = LrcSource.web]) {
     final List<KrcLine> lines = [];
     String? languageFrame;
 
@@ -100,7 +100,7 @@ class Krc extends Lyric {
       fommatedLines.add(lastLine);
     }
 
-    return Krc(fommatedLines);
+    return Krc(fommatedLines, source);
   }
 
   @override

@@ -71,21 +71,8 @@ class LrcLine extends UnsyncLyricLine {
   }
 }
 
-enum LrcSource {
-  /// mp3: USLT frame
-  /// flac: LYRICS comment
-  local("本地"),
-  web("网络");
-
-  final String name;
-
-  const LrcSource(this.name);
-}
-
 class Lrc extends Lyric {
-  LrcSource source;
-
-  Lrc(super.lines, this.source);
+  Lrc(super.lines, super.source);
 
   @override
   String toString() {
@@ -208,18 +195,16 @@ Lyric? parseLyricText(String text, {String? separator = "┃"}) {
     final trimmed = line.trim();
     if (trimmed.isEmpty) continue;
 
-    // Qrc pattern check: starts with [digits,digits] and contains word(digits,digits)
+    // Qrc pattern check: starts with [digits,digits] and has word(digits,digits)
     if (trimmed.startsWith(RegExp(r'^\[\d+,\d+\]')) &&
-        trimmed.contains('(') &&
-        trimmed.contains(')')) {
+        trimmed.contains(RegExp(r'\(\d+,\d+\)'))) {
       isQrc = true;
       break;
     }
 
-    // Krc pattern check: starts with [digits,digits] and contains <digits,digits>
+    // Krc pattern check: starts with [digits,digits] and has <digits,digits>
     if (trimmed.startsWith(RegExp(r'^\[\d+,\d+\]')) &&
-        trimmed.contains('<') &&
-        trimmed.contains('>')) {
+        trimmed.contains(RegExp(r'<\d+,\d+>'))) {
       isKrc = true;
       break;
     }
@@ -228,15 +213,15 @@ Lyric? parseLyricText(String text, {String? separator = "┃"}) {
   if (isQrc) {
     if (text.contains("//trans//")) {
       final parts = text.split("//trans//");
-      return Qrc.fromQrcText(parts[0].trim(), parts[1].trim());
+      return Qrc.fromQrcText(parts[0].trim(), parts[1].trim(), LrcSource.local);
     }
-    return Qrc.fromQrcText(text);
+    return Qrc.fromQrcText(text, null, LrcSource.local);
   } else if (isKrc) {
     if (text.contains("//trans//")) {
       final parts = text.split("//trans//");
-      return Krc.fromKrcText(parts[0].trim(), parts[1].trim());
+      return Krc.fromKrcText(parts[0].trim(), parts[1].trim(), LrcSource.local);
     }
-    return Krc.fromKrcText(text);
+    return Krc.fromKrcText(text, null, LrcSource.local);
   } else {
     return Lrc.fromLrcText(text, LrcSource.local, separator: separator);
   }

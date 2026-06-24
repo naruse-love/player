@@ -32,8 +32,7 @@ class SetLyricSourceBtn extends StatelessWidget {
           final lyricNullable = snapshot.data;
           final isLocal = lyricNullable == null
               ? null
-              : (lyricNullable is Lrc &&
-                  lyricNullable.source == LrcSource.local);
+              : lyricNullable.source == LrcSource.local;
           return switch (snapshot.connectionState) {
             ConnectionState.none => loadingWidget,
             ConnectionState.waiting => loadingWidget,

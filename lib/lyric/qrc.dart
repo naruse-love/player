@@ -1,9 +1,9 @@
 import 'package:coriander_player/lyric/lyric.dart';
 
 class Qrc extends Lyric {
-  Qrc(super.lines);
+  Qrc(super.lines, [LrcSource source = LrcSource.web]) : super(source);
 
-  static Qrc fromQrcText(String qrc, [String? transRawStr]) {
+  static Qrc fromQrcText(String qrc, [String? transRawStr, LrcSource source = LrcSource.web]) {
     final List<QrcLine> lines = [];
     final splited = qrc.split("\n");
     for (final item in splited) {
@@ -58,7 +58,7 @@ class Qrc extends Lyric {
       fommatedLines.add(lastLine);
     }
 
-    return Qrc(fommatedLines);
+    return Qrc(fommatedLines, source);
   }
 
   @override
