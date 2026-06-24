@@ -1,5 +1,6 @@
 use lofty::config::WriteOptions;
 use lofty::prelude::*;
+use lofty::Tag;
 
 /// 将歌词写入音频文件的标签中
 pub fn set_lyric_to_path(path: String, lyric: String) -> anyhow::Result<String> {
