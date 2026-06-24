@@ -1,4 +1,4 @@
-
+use lofty::config::WriteOptions;
 use lofty::prelude::*;
 
 /// 将歌词写入音频文件的标签中
@@ -15,7 +15,7 @@ pub fn set_lyric_to_path(path: String, lyric: String) -> Result<String, String> 
 
     // 通过 AudioFile::save_to_path 写回
     tagged_file
-        .save_to_path(&path)
+        .save_to_path(&path, WriteOptions::default())
         .map_err(|e| format!("写入歌词失败: {e}"))?;
 
     Ok("歌词已保存到文件".to_string())
