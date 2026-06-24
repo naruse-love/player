@@ -37,15 +37,15 @@ jobs:
     - name: Check Rust compilation
       shell: pwsh
       run: |
+        $ErrorActionPreference = 'Continue'
         Write-Host "=== Running cargo check ==="
         Push-Location rust
-        $checkResult = cargo check 2>&1
+        cargo check 2>&1 | Write-Host
         $rustExitCode = $LASTEXITCODE
         Pop-Location
         
         if ($rustExitCode -ne 0) {
             Write-Host "ERROR: cargo check failed with exit code $rustExitCode" -ForegroundColor Red
-            Write-Host $checkResult
             exit 1
         }
         
@@ -54,7 +54,12 @@ jobs:
     - name: Build Windows
       shell: pwsh
       run: |
-        flutter build windows --verbose 2>&1
+        $ErrorActionPreference = 'Continue'
+        flutter build windows --verbose 2>&1 | Write-Host
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "ERROR: flutter build windows failed with exit code $LASTEXITCODE" -ForegroundColor Red
+            exit 1
+        }
 
     - name: Download dll
       shell: pwsh
