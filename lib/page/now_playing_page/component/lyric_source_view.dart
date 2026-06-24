@@ -113,9 +113,10 @@ class _SetLyricSourceBtn extends StatelessWidget {
         MenuItemButton(
           onPressed: () {
             final nowPlaying = PlayService.instance.playbackService.nowPlaying;
+            if (nowPlaying == null) return;
             showDialog<String>(
               context: context,
-              builder: (context) => _SetLyricSourceDialog(audio: nowPlaying!),
+              builder: (context) => _SetLyricSourceDialog(audio: nowPlaying),
             );
           },
           child: const Text("指定默认歌词"),

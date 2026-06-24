@@ -7,6 +7,11 @@ pub fn set_lyric_to_path(path: String, lyric: String) -> anyhow::Result<String> 
         lofty::read_from_path(&path).map_err(|e| anyhow::anyhow!("无法读取音频文件: {e}"))?;
 
     let has_primary = tagged_file.primary_tag().is_some();
+    if !has_primary && tagged_file.first_tag().is_none() {
+        tagged_file.insert_tag(Tag::new(tagged_file.primary_tag_type()));
+    }
+
+    let has_primary = tagged_file.primary_tag().is_some();
     let tag = if has_primary {
         tagged_file.primary_tag_mut().unwrap()
     } else {
