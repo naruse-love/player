@@ -16,7 +16,7 @@ class Krc extends Lyric {
       final left = item.indexOf("[");
       final right = item.indexOf("]");
       
-      if (left != -1 && right != -1) {
+      if (left != -1 && right != -1 && left < right) {
         if (languageFrame == null) {
           final tag = item.substring(left + 1, right);
           var splitedTag = tag.split(":");

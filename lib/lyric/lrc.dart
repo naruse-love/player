@@ -45,7 +45,7 @@ class LrcLine extends UnsyncLyricLine {
     var content = line
         .substring(right + 1)
         .trim()
-        .replaceAll(RegExp(r"\[\d{2}:\d{2}\.\d{2,}\]"), "");
+        .replaceAll(RegExp(r"\[\d{2}:\d{2}(?:\.\d+)?\]"), "");
 
     var timeList = lrcTimeString.split(":");
     int? minute;
