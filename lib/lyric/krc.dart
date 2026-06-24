@@ -21,7 +21,7 @@ class Krc extends Lyric {
           final tag = item.substring(left + 1, right);
           var splitedTag = tag.split(":");
           final tagName = splitedTag.firstOrNull;
-          if (tagName?.contains("language") == true) {
+          if (tagName?.contains("language") == true && splitedTag.length > 1) {
             languageFrame = splitedTag[1];
           }
         }
@@ -44,11 +44,11 @@ class Krc extends Lyric {
 
         final left = transLine.indexOf("[");
         final right = transLine.indexOf("]");
-        if (left == -1 || right == -1) continue;
+        if (left == -1 || right == -1 || left >= right) continue;
 
         final timeStr = transLine.substring(left + 1, right);
         if (int.tryParse(timeStr.split(":").first) != null) {
-          final t = transLine.replaceAll(RegExp(r"\[\d{2}:\d{2}\.\d{2,}\]"), "");
+          final t = transLine.replaceAll(RegExp(r"\[\d{2}:\d{2}(?:\.\d+)?\]"), "");
           if (t.isNotEmpty) {
             lines[lineIt].translation = t;
             lineIt += 1;
@@ -56,22 +56,28 @@ class Krc extends Lyric {
         }
       }
     } else if (languageFrame != null) {
-      final Map languageMap =
-          json.decode(utf8.decode(base64.decode(languageFrame)));
-      List trans = [];
-      for (var item in languageMap["content"]) {
-        if (item["type"] == 1) {
-          final List transContent = item["lyricContent"];
-          for (List transLine in transContent) {
-            trans.add(transLine.first);
+      try {
+        final Map languageMap =
+            json.decode(utf8.decode(base64.decode(languageFrame)));
+        List trans = [];
+        for (var item in languageMap["content"]) {
+          if (item["type"] == 1) {
+            final List transContent = item["lyricContent"];
+            for (List transLine in transContent) {
+              if (transLine.isNotEmpty) {
+                trans.add(transLine.first);
+              }
+            }
           }
         }
-      }
-      int linesIt = 0, transIt = 0;
-      while ((linesIt < lines.length) && (transIt < trans.length)) {
-        lines[linesIt].translation = trans[transIt];
-        linesIt += 1;
-        transIt += 1;
+        int linesIt = 0, transIt = 0;
+        while ((linesIt < lines.length) && (transIt < trans.length)) {
+          lines[linesIt].translation = trans[transIt];
+          linesIt += 1;
+          transIt += 1;
+        }
+      } catch (_) {
+        // Handle parsing exceptions gracefully
       }
     }
 
@@ -108,6 +114,7 @@ class KrcLine extends SyncLyricLine {
 
   static KrcLine? fromLine(String line, [String? translation]) {
     final splitedLine = line.split("]");
+    if (splitedLine.length < 2) return null;
     final from = splitedLine[0].indexOf("[") + 1;
     final splitedTime = splitedLine[0].substring(from).split(",");
 

@@ -35,7 +35,7 @@ class LrcLine extends UnsyncLyricLine {
     final left = line.indexOf("[");
     final right = line.indexOf("]");
 
-    if (left == -1 || right == -1) {
+    if (left == -1 || right == -1 || left >= right) {
       return null;
     }
 

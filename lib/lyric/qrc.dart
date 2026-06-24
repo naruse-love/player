@@ -22,14 +22,15 @@ class Qrc extends Lyric {
           break;
         }
 
-        final timeStr = transLine.substring(
-          transLine.indexOf("[") + 1,
-          transLine.indexOf("]"),
-        );
+        final left = transLine.indexOf("[");
+        final right = transLine.indexOf("]");
+        if (left == -1 || right == -1 || left >= right) continue;
+
+        final timeStr = transLine.substring(left + 1, right);
         // 如果是翻译行就加到歌词去
         if (int.tryParse(timeStr.split(":").first) != null) {
           final t =
-              transLine.replaceAll(RegExp(r"\[\d{2}:\d{2}\.\d{2,}\]"), "");
+              transLine.replaceAll(RegExp(r"\[\d{2}:\d{2}(?:\.\d+)?\]"), "");
           if (t.isNotEmpty) {
             lines[lineIt].translation = t;
             lineIt += 1;
@@ -71,6 +72,7 @@ class QrcLine extends SyncLyricLine {
 
   static QrcLine? fromLine(String line, [String? translation]) {
     final splitedLine = line.split("]");
+    if (splitedLine.length < 2) return null;
     final from = splitedLine[0].indexOf("[") + 1;
     final splitedTime = splitedLine[0].substring(from).split(",");
 
