@@ -491,6 +491,43 @@ fn wire__crate__api__tag_reader__get_picture_from_path_impl(
         },
     )
 }
+fn wire__crate__api__tag_writer__set_lyric_to_path_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "set_lyric_to_path",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_path = <String>::sse_decode(&mut deserializer);
+            let api_lyric = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let output_ok =
+                            crate::api::tag_writer::set_lyric_to_path(api_path, api_lyric)?;
+                        Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__logger__init_rust_logger_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -1040,6 +1077,12 @@ fn pde_ffi_dispatcher_primary_impl(
         13 => wire__crate__api__utils__pick_single_folder_impl(port, ptr, rust_vec_len, data_len),
         14 => wire__crate__api__utils__show_in_explorer_impl(port, ptr, rust_vec_len, data_len),
         16 => wire__crate__api__tag_reader__update_index_impl(port, ptr, rust_vec_len, data_len),
+        999 => wire__crate__api__tag_writer__set_lyric_to_path_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
         _ => unreachable!(),
     }
 }

@@ -111,6 +111,8 @@ abstract class RustLibApi extends BaseApi {
 
   Future<List<InstalledFont>?> crateApiInstalledFontGetInstalledFonts();
 
+  Future<String> crateApiTagWriterSetLyricToPath({required String path, required String lyric});
+
   Future<String?> crateApiTagReaderGetLyricFromPath({required String path});
 
   Future<Uint8List?> crateApiTagReaderGetPictureFromPath(
@@ -402,6 +404,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(
         debugName: "get_lyric_from_path",
         argNames: ["path"],
+      );
+
+  @override
+  Future<String> crateApiTagWriterSetLyricToPath({required String path, required String lyric}) {
+    return handler.executeNormal(NormalTask(
+      callFfi: (port_) {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_String(path, serializer);
+        sse_encode_String(lyric, serializer);
+        pdeCallFfi(generalizedFrbRustBinding, serializer,
+            funcId: 999, port: port_);
+      },
+      codec: SseCodec(
+        decodeSuccessData: sse_decode_String,
+        decodeErrorData: sse_decode_AnyhowException,
+      ),
+      constMeta: kCrateApiTagWriterSetLyricToPathConstMeta,
+      argValues: [path, lyric],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiTagWriterSetLyricToPathConstMeta =>
+      const TaskConstMeta(
+        debugName: "set_lyric_to_path",
+        argNames: ["path", "lyric"],
       );
 
   @override

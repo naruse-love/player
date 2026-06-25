@@ -5,6 +5,7 @@ import 'package:coriander_player/lyric/lyric.dart';
 import 'package:coriander_player/lyric/qrc.dart';
 import 'package:coriander_player/lyric/krc.dart';
 import 'package:coriander_player/lyric/elrc.dart';
+import 'package:coriander_player/src/rust/api/tag_writer.dart';
 
 String lyricToLrcString(Lyric lyric) {
   final buffer = StringBuffer();
@@ -54,7 +55,7 @@ String serializeQrc(Qrc qrc) {
   }
 
   if (hasTrans) {
-    return qrcBuffer.toString().trim() + "\n//trans//\n" + transBuffer.toString().trim();
+    return '${qrcBuffer.toString().trim()}\n//trans//\n${transBuffer.toString().trim()}';
   }
   return qrcBuffer.toString().trim();
 }
@@ -86,7 +87,7 @@ String serializeKrc(Krc krc) {
   }
 
   if (hasTrans) {
-    return krcBuffer.toString().trim() + "\n//trans//\n" + transBuffer.toString().trim();
+    return '${krcBuffer.toString().trim()}\n//trans//\n${transBuffer.toString().trim()}';
   }
   return krcBuffer.toString().trim();
 }
@@ -158,6 +159,11 @@ Future<bool> saveLyricToLrcFile(String audioPath, Lyric lyric) async {
 
 /// 将 Lyric 写入音频文件的标签中
 Future<bool> saveLyricToTag(String audioPath, Lyric lyric) async {
-  // Lofty 0.21 write API incompatible, saving lyric to tag is currently disabled.
-  return false;
+  try {
+    final lyricString = lyricToString(lyric);
+    await setLyricToPath(path: audioPath, lyric: lyricString);
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
