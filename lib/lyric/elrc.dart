@@ -96,13 +96,21 @@ class Elrc extends Lyric {
     // Associate translations and unmatched unsynced lines
     for (final unsynced in unsyncedLines) {
       bool matched = false;
+      ElrcLine? closestLine;
+      int minDiff = 100000000;
       for (final synced in syncedLines) {
-        if (synced.start == unsynced.start) {
-          synced.translation = unsynced.content;
-          matched = true;
-          break;
+        final diff = (synced.start.inMilliseconds - unsynced.start.inMilliseconds).abs();
+        if (diff < minDiff) {
+          minDiff = diff;
+          closestLine = synced;
         }
       }
+
+      if (closestLine != null && minDiff <= 1000) {
+        closestLine.translation = unsynced.content;
+        matched = true;
+      }
+
       if (!matched && unsynced.content.isNotEmpty) {
         // Unmatched unsynced line becomes a synced line with a single word
         final word = ElrcWord(unsynced.start, unsynced.length, unsynced.content);

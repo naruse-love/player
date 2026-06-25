@@ -35,24 +35,40 @@ class Krc extends Lyric {
     }
 
     if (transRawStr != null) {
-      int lineIt = 0;
+      Duration? parseTimeStr(String timeStr) {
+        final parts = timeStr.split(":");
+        if (parts.length < 2) return null;
+        final minute = int.tryParse(parts[0]);
+        final second = double.tryParse(parts[1]);
+        if (minute == null || second == null) return null;
+        return Duration(milliseconds: ((minute * 60 + second) * 1000).toInt());
+      }
+
       final splitedTrans = transRawStr.split("\n");
       for (var transLine in splitedTrans) {
-        if (lineIt > lines.length - 1) {
-          break;
-        }
-
         final left = transLine.indexOf("[");
         final right = transLine.indexOf("]");
         if (left == -1 || right == -1 || left >= right) continue;
 
         final timeStr = transLine.substring(left + 1, right);
-        if (int.tryParse(timeStr.split(":").first) != null) {
-          final t = transLine.replaceAll(RegExp(r"\[\d{2}:\d{2}(?:\.\d+)?\]"), "");
-          if (t.isNotEmpty) {
-            lines[lineIt].translation = t;
-            lineIt += 1;
+        final transTime = parseTimeStr(timeStr);
+        if (transTime == null) continue;
+
+        final t = transLine.replaceAll(RegExp(r"\[\d{2}:\d{2}(?:\.\d+)?\]"), "").trim();
+        if (t.isEmpty) continue;
+
+        KrcLine? closestLine;
+        int minDiff = 100000000;
+        for (final line in lines) {
+          final diff = (line.start.inMilliseconds - transTime.inMilliseconds).abs();
+          if (diff < minDiff) {
+            minDiff = diff;
+            closestLine = line;
           }
+        }
+
+        if (closestLine != null && minDiff <= 1000) {
+          closestLine.translation = t;
         }
       }
     } else if (languageFrame != null) {
