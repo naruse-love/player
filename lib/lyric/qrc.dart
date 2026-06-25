@@ -1,7 +1,7 @@
 import 'package:coriander_player/lyric/lyric.dart';
 
 class Qrc extends Lyric {
-  Qrc(super.lines, [LrcSource source = LrcSource.web]) : super(source);
+  Qrc(super.lines, [super.source = LrcSource.web]);
 
   static Qrc fromQrcText(String qrc, [String? transRawStr, LrcSource source = LrcSource.web]) {
     final List<QrcLine> lines = [];

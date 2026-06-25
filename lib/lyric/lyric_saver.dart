@@ -10,10 +10,11 @@ String lyricToLrcString(Lyric lyric) {
   final buffer = StringBuffer();
   for (final line in lyric.lines) {
     String? content;
-    if (line is UnsyncLyricLine) {
-      content = line.content;
-    } else if (line is SyncLyricLine) {
-      content = line.content;
+    final currLine = line;
+    if (currLine is UnsyncLyricLine) {
+      content = currLine.content;
+    } else if (currLine is SyncLyricLine) {
+      content = currLine.content;
     }
     if (content != null) {
       final minutes = line.start.inMinutes;

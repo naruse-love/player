@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:coriander_player/lyric/lyric.dart';
 
 class Krc extends Lyric {
-  Krc(super.lines, [LrcSource source = LrcSource.web]) : super(source);
+  Krc(super.lines, [super.source = LrcSource.web]);
 
   static Krc fromKrcText(String krc, [String? transRawStr, LrcSource source = LrcSource.web]) {
     final List<KrcLine> lines = [];
