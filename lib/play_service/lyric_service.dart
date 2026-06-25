@@ -65,7 +65,16 @@ class LyricService extends ChangeNotifier {
             playService.playbackService.position,
       );
       _nextLyricLine = next == -1 ? value.lines.length : next;
-      _lyricLineStreamController.add(max(_nextLyricLine - 1, 0));
+      final currLineIndex = max(_nextLyricLine - 1, 0);
+      _lyricLineStreamController.add(currLineIndex);
+
+      playService.desktopLyricService.canSendMessage.then((canSend) {
+        if (!canSend) return;
+        if (currLineIndex < value.lines.length) {
+          final currLine = value.lines[currLineIndex];
+          playService.desktopLyricService.sendLyricLineMessage(currLine);
+        }
+      });
     });
   }
 

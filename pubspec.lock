@@ -100,11 +100,9 @@ packages:
   desktop_lyric:
     dependency: "direct main"
     description:
-      path: "."
-      ref: "536be8df55c80a7fdf7cc20f603d3fc76a732821"
-      resolved-ref: "536be8df55c80a7fdf7cc20f603d3fc76a732821"
-      url: "https://github.com/Ferry-200/desktop_lyric.git"
-    source: git
+      path: "../desktop_lyric-main"
+      relative: true
+    source: path
     version: "0.1.0"
   encrypt:
     dependency: transitive

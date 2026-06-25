@@ -96,16 +96,18 @@ jobs:
       shell: pwsh
       run: Get-ChildItem -Recurse build\windows\x64\runner\Release | Select-Object Mode, Length, Name | Format-Table -AutoSize
 
-    - name: Download desktop_lyric
+    - name: Clone and build desktop_lyric
       shell: pwsh
       run: |
-        $tag = (curl.exe -sL "https://api.github.com/repos/Ferry-200/desktop_lyric/releases/latest" | Select-String -Pattern '"tag_name":\s*"([^"]+)"' | % { $_.Matches.Groups[1].Value })
-        if (-not $tag) { Write-Host "No release found"; exit 0 }
-        Write-Host "Downloading desktop_lyric $tag"
-        curl.exe -sL "https://github.com/Ferry-200/desktop_lyric/releases/download/$tag/desktop_lyric-windows-x64.zip" -o desktop_lyric.zip
-        if (Test-Path desktop_lyric.zip) {
-          Expand-Archive -Path desktop_lyric.zip -DestinationPath build\windows\x64\runner\Release\desktop_lyric -Force
-        }
+        git clone https://github.com/dj2733721464-cyber/desktop_lyric.git ../desktop_lyric-main
+        Push-Location ../desktop_lyric-main
+        flutter pub get
+        flutter pub run build_runner build --delete-conflicting-outputs
+        flutter build windows --release
+        Pop-Location
+        $DestDir = "build\windows\x64\runner\Release\desktop_lyric"
+        New-Item -ItemType Directory -Path $DestDir -Force | Out-Null
+        Copy-Item -Path "../desktop_lyric-main/build/windows/x64/runner/Release/*" -Destination $DestDir -Recurse -Force
 
     - name: Package artifact
       shell: pwsh

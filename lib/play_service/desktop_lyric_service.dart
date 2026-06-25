@@ -153,10 +153,14 @@ class DesktopLyricService extends ChangeNotifier {
 
   void sendLyricLineMessage(LyricLine line) {
     if (line is SyncLyricLine) {
+      final words = line.words
+          .map((w) => msg.SyncWord(w.content, w.start, w.length))
+          .toList();
       sendMessage(msg.LyricLineChangedMessage(
         line.content,
         line.length,
         line.translation,
+        words,
       ));
     } else if (line is LrcLine) {
       final splitted = line.content.split("┃");
