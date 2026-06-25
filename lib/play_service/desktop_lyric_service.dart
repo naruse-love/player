@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:coriander_player/library/audio_library.dart';
 import 'package:coriander_player/lyric/lrc.dart';
 import 'package:coriander_player/lyric/lyric.dart';
@@ -152,15 +153,20 @@ class DesktopLyricService extends ChangeNotifier {
   }
 
   void sendLyricLineMessage(LyricLine line) {
+    final currentPosMs = (playService.playbackService.position * 1000).toInt();
+    final elapsedMs = max(currentPosMs - line.start.inMilliseconds, 0);
+    final elapsed = Duration(milliseconds: elapsedMs);
+
     if (line is SyncLyricLine) {
       final words = line.words
-          .map((w) => msg.SyncWord(w.content, w.start, w.length))
+          .map((w) => msg.SyncWord(w.content, w.start - line.start, w.length))
           .toList();
       sendMessage(msg.LyricLineChangedMessage(
         line.content,
         line.length,
         line.translation,
         words,
+        elapsed,
       ));
     } else if (line is LrcLine) {
       final splitted = line.content.split("┃");
@@ -170,6 +176,19 @@ class DesktopLyricService extends ChangeNotifier {
         content,
         line.length,
         translation,
+        null,
+        elapsed,
+      ));
+    } else if (line is UnsyncLyricLine) {
+      final splitted = line.content.split("┃");
+      final content = splitted.first;
+      final translation = splitted.length > 1 ? splitted[1] : null;
+      sendMessage(msg.LyricLineChangedMessage(
+        content,
+        Duration.zero,
+        translation,
+        null,
+        elapsed,
       ));
     }
   }
