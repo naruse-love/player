@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:coriander_player/lyric/lyric.dart';
 import 'package:coriander_player/lyric/qrc.dart';
 import 'package:coriander_player/lyric/krc.dart';
+import 'package:coriander_player/lyric/elrc.dart';
 import 'package:coriander_player/src/rust/api/tag_writer.dart';
 
 String lyricToLrcString(Lyric lyric) {
@@ -91,11 +92,49 @@ String serializeKrc(Krc krc) {
   return krcBuffer.toString().trim();
 }
 
+String serializeElrc(Elrc elrc) {
+  final buffer = StringBuffer();
+  for (final line in elrc.lines) {
+    if (line is ElrcLine) {
+      final first = line.words.firstOrNull;
+      if (first != null) {
+        final minutes = line.start.inMinutes;
+        final seconds = (line.start.inSeconds % 60);
+        final millis = (line.start.inMilliseconds % 1000);
+        buffer.write('[${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}.${millis.toString().padLeft(3, '0')}]');
+      }
+      for (final word in line.words) {
+        buffer.write(word.content);
+        final wordEnd = word.start + word.length;
+        final minutes = wordEnd.inMinutes;
+        final seconds = (wordEnd.inSeconds % 60);
+        final millis = (wordEnd.inMilliseconds % 1000);
+        buffer.write('[${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}.${millis.toString().padLeft(3, '0')}]');
+      }
+      buffer.writeln();
+      
+      if (line.translation != null && line.translation!.isNotEmpty) {
+        final startMin = line.start.inMinutes;
+        final startSec = (line.start.inSeconds % 60);
+        final startMil = (line.start.inMilliseconds % 1000);
+        final end = line.start + line.length;
+        final endMin = end.inMinutes;
+        final endSec = (end.inSeconds % 60);
+        final endMil = (end.inMilliseconds % 1000);
+        buffer.writeln('[${startMin.toString().padLeft(2, '0')}:${startSec.toString().padLeft(2, '0')}.${startMil.toString().padLeft(3, '0')}]${line.translation}[${endMin.toString().padLeft(2, '0')}:${endSec.toString().padLeft(2, '0')}.${endMil.toString().padLeft(3, '0')}]');
+      }
+    }
+  }
+  return buffer.toString();
+}
+
 String lyricToString(Lyric lyric) {
   if (lyric is Qrc) {
     return serializeQrc(lyric);
   } else if (lyric is Krc) {
     return serializeKrc(lyric);
+  } else if (lyric is Elrc) {
+    return serializeElrc(lyric);
   } else {
     return lyricToLrcString(lyric);
   }

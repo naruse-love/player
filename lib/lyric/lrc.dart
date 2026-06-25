@@ -4,6 +4,7 @@ import 'package:coriander_player/library/audio_library.dart';
 import 'package:coriander_player/lyric/lyric.dart';
 import 'package:coriander_player/lyric/qrc.dart';
 import 'package:coriander_player/lyric/krc.dart';
+import 'package:coriander_player/lyric/elrc.dart';
 import 'package:coriander_player/src/rust/api/tag_reader.dart';
 
 
@@ -190,6 +191,9 @@ Lyric? parseLyricText(String text, {String? separator = "┃"}) {
 
   bool isQrc = false;
   bool isKrc = false;
+  bool isElrc = false;
+
+  final timestampRegex = RegExp(r'\[\d{2}:\d{2}(?:\.\d+)?\]');
 
   for (final line in lines) {
     final trimmed = line.trim();
@@ -208,6 +212,31 @@ Lyric? parseLyricText(String text, {String? separator = "┃"}) {
       isKrc = true;
       break;
     }
+
+    // Elrc pattern check: skip metadata tags, look for >= 3 timestamps on a single line with content in between
+    if (trimmed.startsWith('[ti:') ||
+        trimmed.startsWith('[ar:') ||
+        trimmed.startsWith('[al:') ||
+        trimmed.startsWith('[by:') ||
+        trimmed.startsWith('[offset:') ||
+        trimmed.startsWith('[tool:')) {
+      continue;
+    }
+    final matches = timestampRegex.allMatches(trimmed).toList();
+    if (matches.length >= 3) {
+      bool hasWordContent = false;
+      for (int i = 0; i < matches.length - 1; i++) {
+        final gap = trimmed.substring(matches[i].end, matches[i + 1].start).trim();
+        if (gap.isNotEmpty) {
+          hasWordContent = true;
+          break;
+        }
+      }
+      if (hasWordContent) {
+        isElrc = true;
+        break;
+      }
+    }
   }
 
   if (isQrc) {
@@ -222,6 +251,8 @@ Lyric? parseLyricText(String text, {String? separator = "┃"}) {
       return Krc.fromKrcText(parts[0].trim(), parts[1].trim(), LrcSource.local);
     }
     return Krc.fromKrcText(text, null, LrcSource.local);
+  } else if (isElrc) {
+    return Elrc.fromLrcText(text, LrcSource.local);
   } else {
     return Lrc.fromLrcText(text, LrcSource.local, separator: separator);
   }
