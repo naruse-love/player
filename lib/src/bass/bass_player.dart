@@ -522,6 +522,8 @@ class BassPlayer {
               "Device streams (STREAMPROC_DEVICE) cannot be freed.");
       }
     }
+    _fstream = null;
+    _fPath = null;
   }
 
   /// Frees all resources used by the output device,

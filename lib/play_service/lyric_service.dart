@@ -99,14 +99,27 @@ class LyricService extends ChangeNotifier {
 
     currLyricFuture.ignore();
 
+    currLyricFuture = _loadLyric(nowPlaying);
+
+    currLyricFuture.then((value) {
+      _nextLyricLine = 0;
+    });
+
+    notifyListeners();
+  }
+
+  Future<Lyric?> _loadLyric(Audio nowPlaying) async {
+    if (AppSettings.instance.localLyricFirst) {
+      final local = await Lrc.fromAudioPath(nowPlaying);
+      if (local != null) return local;
+    }
+
     final lyricSource = LYRIC_SOURCES[nowPlaying.path];
-    if (lyricSource == null) {
-      currLyricFuture = _getLyricDefault(AppSettings.instance.localLyricFirst);
-    } else {
+    if (lyricSource != null) {
       if (lyricSource.source == LyricSourceType.local) {
-        currLyricFuture = Lrc.fromAudioPath(nowPlaying);
+        return Lrc.fromAudioPath(nowPlaying);
       } else {
-        currLyricFuture = getOnlineLyric(
+        return getOnlineLyric(
           qqSongId: lyricSource.qqSongId,
           kugouSongHash: lyricSource.kugouSongHash,
           neteaseSongId: lyricSource.neteaseSongId,
@@ -114,11 +127,7 @@ class LyricService extends ChangeNotifier {
       }
     }
 
-    currLyricFuture.then((value) {
-      _nextLyricLine = 0;
-    });
-
-    notifyListeners();
+    return _getLyricDefault(AppSettings.instance.localLyricFirst);
   }
 
   void useLocalLyric() {

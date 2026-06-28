@@ -6,6 +6,7 @@ import 'package:coriander_player/lyric/qrc.dart';
 import 'package:coriander_player/lyric/krc.dart';
 import 'package:coriander_player/lyric/elrc.dart';
 import 'package:coriander_player/src/rust/api/tag_writer.dart';
+import 'package:coriander_player/utils.dart';
 
 String lyricToLrcString(Lyric lyric) {
   final buffer = StringBuffer();
@@ -163,7 +164,8 @@ Future<bool> saveLyricToTag(String audioPath, Lyric lyric) async {
     final lyricString = lyricToString(lyric);
     await setLyricToPath(path: audioPath, lyric: lyricString);
     return true;
-  } catch (_) {
+  } catch (e, stack) {
+    LOGGER.e("Failed to save lyric to tag: $e", stackTrace: stack);
     return false;
   }
 }

@@ -12,6 +12,8 @@ import 'package:coriander_player/src/rust/api/smtc_flutter.dart';
 import 'package:coriander_player/theme_provider.dart';
 import 'package:coriander_player/utils.dart';
 import 'package:flutter/foundation.dart';
+import 'package:coriander_player/lyric/lyric.dart';
+import 'package:coriander_player/lyric/lyric_saver.dart';
 
 enum PlayMode {
   /// 顺序播放到播放列表结尾
@@ -439,5 +441,31 @@ class PlaybackService extends ChangeNotifier {
     } catch (_) {
       return false;
     }
+  }
+
+  /// 写入歌词到歌曲的标签中。如果歌曲当前正在播放，则需要临时释放文件锁。
+  Future<bool> writeLyricToTag(Audio audio, Lyric lyric) async {
+    final isPlaying = nowPlaying?.path == audio.path;
+    final double? currentPosition = isPlaying ? _player.position : null;
+    final bool? wasPlaying = isPlaying ? (_player.playerState == PlayerState.playing) : null;
+
+    if (isPlaying) {
+      _player.freeFStream();
+    }
+
+    final ok = await saveLyricToTag(audio.path, lyric);
+
+    if (isPlaying) {
+      _player.setSource(audio.path);
+      setVolumeDsp(AppPreference.instance.playbackPref.volumeDsp);
+      if (currentPosition != null) {
+        _player.seek(currentPosition);
+      }
+      if (wasPlaying == true) {
+        _player.start();
+      }
+    }
+
+    return ok;
   }
 }

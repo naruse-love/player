@@ -89,7 +89,7 @@ class _SetLyricSourceBtn extends StatelessWidget {
       return;
     }
 
-    final ok = await saveLyricToTag(nowPlaying.path, lyric);
+    final ok = await PlayService.instance.playbackService.writeLyricToTag(nowPlaying, lyric);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(ok ? "歌词已写入歌曲标签" : "写入标签失败")),
