@@ -10,6 +10,15 @@
 .svn/
 migrate_working_dir/
 
+# Temporary / generated files
+analyze_out.txt
+conversation_history.html
+session_summary.md
+job_*.txt
+fetch_*.py
+trigger_workflow.py
+wait_for_ci.py
+
 # IntelliJ related
 *.iml
 *.ipr
