@@ -270,6 +270,12 @@ class PlaybackService extends ChangeNotifier {
 
     if (_playlistIndex! < playlist.value.length - 1) {
       _loadAndPlay(_playlistIndex! + 1, playlist.value);
+    } else {
+      // 到达播放列表末尾，结算最后一首歌的收听数据
+      _finalizePlaySession(incrementCount: _hasIncrementedForCurrentSong);
+      _hasIncrementedForCurrentSong = false;
+      _listenedThisSession = 0;
+      _maxTrackedPosition = 0;
     }
   }
 

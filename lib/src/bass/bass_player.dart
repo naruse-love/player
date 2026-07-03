@@ -412,6 +412,7 @@ class BassPlayer {
       }
     }
     _playerStateStreamController.add(playerState);
+    _positionUpdater?.cancel();
     _positionUpdater = _getPositionUpdater();
   }
 
@@ -439,6 +440,7 @@ class BassPlayer {
     }
 
     _playerStateStreamController.add(playerState);
+    _positionUpdater?.cancel();
     _positionUpdater = _getPositionUpdater();
   }
 
