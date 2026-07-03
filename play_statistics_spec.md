@@ -34,14 +34,16 @@
     *   `_listenedThisSession = 0.0` (当前会话中累计实际收听时长，秒)
 2.  在播放器的进度流监听器（每 33ms 触发）中：
     *   当当前进度 `progress` 超过了以往的最大跟踪位置时：
-        $$\Delta t = \text{progress} - \text{_maxTrackedPosition}$$
+        $$\Delta t = \text{progress} - \text{\_maxTrackedPosition}$$
         将增量 $\Delta t$ 累加到 `_listenedThisSession` 中。
     *   将 `_maxTrackedPosition` 更新为当前进度值 `progress`。
-    *   *注：若用户往回拖拽进度条，由于 `progress` $\le$ `_maxTrackedPosition`，增量计算不成立，从而完美规避了重复计时的 Bug。*
+    *   *注：若用户往回拖拽进度条，由于 `progress` $\le$ `_maxTrackedPosition`，增量计算不成立，从而规避了重复计时。*
+3.  **Seek 前进守卫**：当用户调用 `seek(position)` 向前拖动进度条时，如果 `position > _maxTrackedPosition`，则直接将 `_maxTrackedPosition` 跳至 `position`。这确保了跳过的区间不会被后续进度流误算为实际收听时长。
 
 ### 2.2 播放次数的过半判定 (Halfway Mark)
 为防止用户通过反复拉进度条在单次收听中刷播放量，系统执行过半判定：
-*   当进度流检测到 $\text{progress} \ge \frac{\text{length}}{2}$ 时，将过半标记置为 `_hasIncrementedForCurrentSong = true` / `_hasIncrementedForCurrentSong = true`。
+*   当进度流检测到实际收听时长 $\text{\_listenedThisSession} \ge \frac{\text{length}}{2}$ 时，将过半标记置为 `_hasIncrementedForCurrentSong = true`。
+*   注：判定依据是实际累积的收听时长，而非原始进度位置。这避免了用户仅通过向前拖动进度条来伪造播放过半的问题。
 
 ---
 

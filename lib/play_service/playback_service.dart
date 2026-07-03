@@ -76,9 +76,10 @@ class PlaybackService extends ChangeNotifier {
         _maxTrackedPosition = progress;
       }
 
-      // 播放进度过半时标记（最终在 _finalizePlaySession 中统一写入）
+      // 播放进度过半时标记：基于实际收听时长而非进度位置，
+      // 避免用户拖动进度条跳过内容后被误判为"播放过半"
       if (_player.length > 0 &&
-          progress >= _player.length / 2 &&
+          _listenedThisSession >= _player.length / 2 &&
           !_hasIncrementedForCurrentSong) {
         _hasIncrementedForCurrentSong = true;
       }
@@ -355,6 +356,10 @@ class PlaybackService extends ChangeNotifier {
   void playAgain() => _nextAudio_singleLoop();
 
   void seek(double position) {
+    // 向前拖动时，跳过的区间不应计入收听时长
+    if (position > _maxTrackedPosition) {
+      _maxTrackedPosition = position;
+    }
     _player.seek(position);
     playService.lyricService.findCurrLyricLine();
   }
