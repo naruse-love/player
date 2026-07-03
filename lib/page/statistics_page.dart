@@ -28,7 +28,7 @@ class StatisticsPage extends StatefulWidget {
 }
 
 class _StatisticsPageState extends State<StatisticsPage> {
-  DateRangePreset _selectedPreset = DateRangePreset.thisMonth;
+  DateRangePreset _selectedPreset = DateRangePreset.today;
   DateTime? _customStart;
   DateTime? _customEnd;
 
@@ -167,11 +167,11 @@ class _StatisticsPageState extends State<StatisticsPage> {
     for (var h = 0; h < 24; h++) {
       final hourStart = DateTime(start.year, start.month, start.day, h);
       final hourEnd = DateTime(start.year, start.month, start.day, h, 59, 59);
-      final count = records
+      final secs = records
           .where((r) =>
               !r.playedAt.isBefore(hourStart) && r.playedAt.isBefore(hourEnd.add(const Duration(seconds: 1))))
-          .length;
-      bins.add(_ChartBin(label: "${h.toString().padLeft(2, '0')}:00", count: count));
+          .fold(0, (sum, r) => sum + r.listenedSeconds);
+      bins.add(_ChartBin(label: "${h.toString().padLeft(2, '0')}:00", minutes: secs / 60.0));
     }
     return bins;
   }
@@ -186,14 +186,12 @@ class _StatisticsPageState extends State<StatisticsPage> {
     for (var i = 0; i < days; i++) {
       final dayStart = DateTime(start.year, start.month, start.day + i);
       final dayEnd = DateTime(start.year, start.month, start.day + i, 23, 59, 59);
-      final count = records
+      final secs = records
           .where((r) =>
               !r.playedAt.isBefore(dayStart) && r.playedAt.isBefore(dayEnd.add(const Duration(seconds: 1))))
-          .length;
-      final label = _granularity == _ChartGranularity.monthly
-          ? "${dayStart.month}/${dayStart.day}"
-          : "${dayStart.month}/${dayStart.day}";
-      bins.add(_ChartBin(label: label, count: count));
+          .fold(0, (sum, r) => sum + r.listenedSeconds);
+      final label = "${dayStart.month}/${dayStart.day}";
+      bins.add(_ChartBin(label: label, minutes: secs / 60.0));
     }
     return bins;
   }
@@ -218,11 +216,11 @@ class _StatisticsPageState extends State<StatisticsPage> {
       final month = int.parse(parts[1]);
       final monthStart = DateTime(year, month, 1);
       final monthEnd = DateTime(year, month + 1, 0, 23, 59, 59);
-      final count = records
+      final secs = records
           .where((r) =>
               !r.playedAt.isBefore(monthStart) && r.playedAt.isBefore(monthEnd.add(const Duration(seconds: 1))))
-          .length;
-      bins.add(_ChartBin(label: "${year}/${month.toString().padLeft(2, '0')}", count: count));
+          .fold(0, (sum, r) => sum + r.listenedSeconds);
+      bins.add(_ChartBin(label: "${year}/${month.toString().padLeft(2, '0')}", minutes: secs / 60.0));
     }
     return bins;
   }
@@ -452,8 +450,9 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
 class _ChartBin {
   final String label;
-  final int count;
-  _ChartBin({required this.label, required this.count});
+  /// 该时段内的听歌时长（分钟）
+  final double minutes;
+  _ChartBin({required this.label, required this.minutes});
 }
 
 class _PlayChart extends StatelessWidget {
@@ -463,8 +462,8 @@ class _PlayChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final maxCount = bins.fold(0, (p, b) => b.count > p ? b.count : p);
-    if (maxCount == 0) return const SizedBox.shrink();
+    final maxMinutes = bins.fold(0.0, (p, b) => b.minutes > p ? b.minutes : p);
+    if (maxMinutes == 0) return const SizedBox.shrink();
 
     const barWidth = 32.0;
     const barGap = 6.0;
@@ -480,7 +479,7 @@ class _PlayChart extends StatelessWidget {
           child: CustomPaint(
             painter: _ChartPainter(
               bins: bins,
-              maxCount: maxCount,
+              maxMinutes: maxMinutes,
               barWidth: barWidth,
               barGap: barGap,
               color: scheme.primary,
@@ -496,7 +495,7 @@ class _PlayChart extends StatelessWidget {
 
 class _ChartPainter extends CustomPainter {
   final List<_ChartBin> bins;
-  final int maxCount;
+  final double maxMinutes;
   final double barWidth;
   final double barGap;
   final Color color;
@@ -505,13 +504,24 @@ class _ChartPainter extends CustomPainter {
 
   _ChartPainter({
     required this.bins,
-    required this.maxCount,
+    required this.maxMinutes,
     required this.barWidth,
     required this.barGap,
     required this.color,
     required this.surfaceColor,
     required this.onSurfaceVariant,
   });
+
+  /// 格式化分钟数为简洁文本
+  static String _formatMin(double minutes) {
+    if (minutes >= 60) {
+      final h = minutes ~/ 60;
+      final m = (minutes % 60).round();
+      return m == 0 ? '${h}h' : '${h}h${m}m';
+    }
+    if (minutes >= 1) return '${minutes.round()}min';
+    return '${(minutes * 60).round()}s';
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -539,9 +549,9 @@ class _ChartPainter extends CustomPainter {
     );
 
     // ── Y 轴标注（最大值） ──
-    if (maxCount > 0) {
+    if (maxMinutes > 0) {
       final maxLabel = TextPainter(
-        text: TextSpan(text: "$maxCount", style: boldTextStyle),
+        text: TextSpan(text: _formatMin(maxMinutes), style: boldTextStyle),
         textDirection: TextDirection.ltr,
       )..layout();
       maxLabel.paint(
@@ -559,11 +569,11 @@ class _ChartPainter extends CustomPainter {
       final y = chartTop + chartHeight * i / 4;
       canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
       // Y 轴刻度标签
-      if (i > 0 && maxCount > 0) {
-        final val = (maxCount * (4 - i) / 4).round();
+      if (i > 0 && maxMinutes > 0) {
+        final val = maxMinutes * (4 - i) / 4;
         if (val > 0) {
           final gridLabel = TextPainter(
-            text: TextSpan(text: "$val", style: textStyle),
+            text: TextSpan(text: _formatMin(val), style: textStyle),
             textDirection: TextDirection.ltr,
           )..layout();
           gridLabel.paint(canvas, Offset(2, y - gridLabel.height / 2));
@@ -577,7 +587,7 @@ class _ChartPainter extends CustomPainter {
       final x = 16.0 + i * (barWidth + barGap);
 
       // 零值背景
-      if (bin.count == 0) {
+      if (bin.minutes == 0) {
         canvas.drawRRect(
           RRect.fromRectAndRadius(
             Rect.fromLTWH(x, chartTop, barWidth, chartHeight),
@@ -588,8 +598,8 @@ class _ChartPainter extends CustomPainter {
       }
 
       // 柱体
-      if (maxCount > 0 && bin.count > 0) {
-        final barHeight = chartHeight * bin.count / maxCount;
+      if (maxMinutes > 0 && bin.minutes > 0) {
+        final barHeight = chartHeight * bin.minutes / maxMinutes;
         final barTop = chartBottom - barHeight;
         canvas.drawRRect(
           RRect.fromRectAndRadius(
@@ -601,7 +611,7 @@ class _ChartPainter extends CustomPainter {
 
         // 数值标签（柱体上方）
         final valueLabel = TextPainter(
-          text: TextSpan(text: "${bin.count}", style: boldTextStyle.copyWith(
+          text: TextSpan(text: _formatMin(bin.minutes), style: boldTextStyle.copyWith(
             color: color,
             fontSize: 10,
           )),
@@ -631,7 +641,7 @@ class _ChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _ChartPainter oldDelegate) =>
-      bins != oldDelegate.bins || maxCount != oldDelegate.maxCount;
+      bins != oldDelegate.bins || maxMinutes != oldDelegate.maxMinutes;
 }
 
 // ═══════════════════════════════════════════════════════
