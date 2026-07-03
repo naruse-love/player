@@ -2,10 +2,6 @@ name: CI
 
 on:
   workflow_dispatch:
-    inputs:
-      token:
-        description: 'GitHub Personal Access Token'
-        required: true
 
 jobs:
   build:
@@ -25,7 +21,7 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
 
     - name: Clone desktop_lyric
-      run: git clone https://x-access-token:${{ github.event.inputs.token }}@github.com/dj2733721464-cyber/desktop_lyric.git ../desktop_lyric-main
+      run: git clone https://x-access-token:${{ secrets.DESKTOP_LYRIC_TOKEN }}@github.com/dj2733721464-cyber/desktop_lyric.git ../desktop_lyric-main
 
     - name: Get dependencies
       run: flutter pub get
