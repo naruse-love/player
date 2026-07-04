@@ -21,7 +21,7 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
 
     - name: Clone desktop_lyric
-      run: git clone https://x-access-token:${{ secrets.DESKTOP_LYRIC_TOKEN }}@github.com/naruse-love/desktop_lyric.git ../desktop_lyric-main
+      run: git clone https://github.com/naruse-love/desktop_lyric.git ../desktop_lyric-main
 
     - name: Get dependencies
       run: flutter pub get
