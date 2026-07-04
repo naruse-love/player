@@ -21,7 +21,7 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
 
     - name: Clone desktop_lyric
-      run: git clone https://x-access-token:${{ secrets.DESKTOP_LYRIC_TOKEN }}@github.com/dj2733721464-cyber/desktop_lyric.git ../desktop_lyric-main
+      run: git clone https://github.com/dj2733721464-cyber/desktop_lyric.git ../desktop_lyric-main
 
     - name: Get dependencies
       run: flutter pub get
@@ -111,14 +111,25 @@ jobs:
         New-Item -ItemType Directory -Path $DestDir -Force | Out-Null
         Copy-Item -Path "../desktop_lyric-main/build/windows/x64/runner/Release/*" -Destination $DestDir -Recurse -Force
 
-    - name: Package artifact
+    - name: Install Inno Setup
       shell: pwsh
       run: |
-        Compress-Archive -Path build\windows\x64\runner\Release\ -DestinationPath coriander_player.zip -Force
+        choco install innosetup --no-progress -y
+        echo "Inno Setup installed at:"
+        (Get-Command iscc.exe).Source
 
-    - name: Upload artifacts
+    - name: Build installer
+      shell: pwsh
+      run: |
+        Push-Location installer
+        & (Get-Command iscc.exe).Source CorianderPlayer.iss
+        Pop-Location
+        Write-Host "=== Installer built ==="
+        Get-ChildItem installer\output
+
+    - name: Upload installer artifact
       uses: actions/upload-artifact@v4
       with:
-        name: "Coriander Player v1.5.2"
+        name: "Coriander Player v1.5.2 安装包"
         path: |
-          coriander_player.zip
+          installer\output\CorianderPlayer_v1.5.2_Setup.exe
