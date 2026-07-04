@@ -3,8 +3,8 @@
 
 #define MyAppName "Coriander Player"
 #define MyAppVersion "1.5.2"
-#define MyAppPublisher "dj2733721464-cyber"
-#define MyAppURL "https://github.com/dj2733721464-cyber/player"
+#define MyAppPublisher "naruse-love"
+#define MyAppURL "https://github.com/naruse-love/player"
 #define MyAppExeName "coriander_player.exe"
 
 [Setup]
