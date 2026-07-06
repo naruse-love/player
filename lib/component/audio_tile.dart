@@ -39,6 +39,7 @@ class AudioTile extends StatelessWidget {
       consumeOutsideTap: true,
       menuChildren: [
         /// artists
+        if (!audio.isRemote)
         SubmenuButton(
           menuChildren: List.generate(
             audio.splitedArtists.length,
@@ -59,6 +60,7 @@ class AudioTile extends StatelessWidget {
         ),
 
         /// album
+        if (!audio.isRemote)
         MenuItemButton(
           onPressed: () {
             final Album album =

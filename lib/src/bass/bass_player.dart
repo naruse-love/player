@@ -245,7 +245,11 @@ class BassPlayer {
       }
       wasapiExclusive = exclusive;
       if (_fstream != null && _fPath != null) {
-        setSource(_fPath!);
+        if (_fPath!.startsWith('http://') || _fPath!.startsWith('https://')) {
+          setSourceFromUrl(_fPath!);
+        } else {
+          setSource(_fPath!);
+        }
         setVolumeDsp(AppPreference.instance.playbackPref.volumeDsp);
         seek(lastPos);
         start();
@@ -317,6 +321,57 @@ class BassPlayer {
           throw const FormatException("There is insufficient memory.");
         case BASS.BASS_ERROR_NO3D:
           throw const FormatException("Could not initialize 3D support.");
+        case BASS.BASS_ERROR_UNKNOWN:
+          throw const FormatException("Some other mystery problem!");
+      }
+    }
+  }
+
+  /// Create stream from a URL (http/https).
+  /// Similar to [setSource] but for network streams.
+  void setSourceFromUrl(String url) {
+    if (_fstream != null) {
+      _positionUpdater?.cancel();
+      freeFStream();
+    }
+    final urlPointer = url.toNativeUtf8() as ffi.Pointer<ffi.Char>;
+
+    const flags = BASS.BASS_SAMPLE_FLOAT;
+    const exclusiveFlags = flags | BASS.BASS_STREAM_DECODE;
+    final handle = _bass.BASS_StreamCreateURL(
+      urlPointer,
+      0,
+      wasapiExclusive ? exclusiveFlags : flags,
+      ffi.nullptr,
+      ffi.nullptr,
+    );
+
+    if (handle != 0) {
+      _fstream = handle;
+      _fPath = url;
+    } else {
+      _fstream = null;
+      _fPath = null;
+      switch (_bass.BASS_ErrorGetCode()) {
+        case BASS.BASS_ERROR_INIT:
+          _bassInit();
+          setSourceFromUrl(url);
+          break;
+        case BASS.BASS_ERROR_NOTAVAIL:
+          throw const FormatException(
+              "The BASS_STREAM_AUTOFREE flag cannot be combined with the BASS_STREAM_DECODE flag.");
+        case BASS.BASS_ERROR_FILEOPEN:
+          throw const FormatException("The URL could not be opened.");
+        case BASS.BASS_ERROR_FILEFORM:
+          throw const FormatException(
+              "The file's format is not recognised/supported.");
+        case BASS.BASS_ERROR_CODEC:
+          throw const FormatException(
+              "The file uses a codec that is not available/supported.");
+        case BASS.BASS_ERROR_FORMAT:
+          throw const FormatException("The sample format is not supported.");
+        case BASS.BASS_ERROR_MEM:
+          throw const FormatException("There is insufficient memory.");
         case BASS.BASS_ERROR_UNKNOWN:
           throw const FormatException("Some other mystery problem!");
       }

@@ -105,7 +105,7 @@ class PlaybackService extends ChangeNotifier {
   /// 结束当前播放会话，将实际收听时长写入统计
   /// [incrementCount] 是否同时增加播放次数
   void _finalizePlaySession({bool incrementCount = false}) {
-    if (nowPlaying == null || _listenedThisSession < 1) return;
+    if (nowPlaying == null || nowPlaying!.isRemote || _listenedThisSession < 1) return;
     final secs = _listenedThisSession.round();
     if (incrementCount) {
       StatisticsService.instance
@@ -178,7 +178,11 @@ class PlaybackService extends ChangeNotifier {
       _hasIncrementedForCurrentSong = false;
       _maxTrackedPosition = 0;
       _listenedThisSession = 0;
-      _player.setSource(nowPlaying!.path);
+      if (nowPlaying!.isRemote) {
+        _player.setSourceFromUrl(nowPlaying!.path);
+      } else {
+        _player.setSource(nowPlaying!.path);
+      }
       setVolumeDsp(AppPreference.instance.playbackPref.volumeDsp);
 
       playService.lyricService.updateLyric();
@@ -456,6 +460,7 @@ class PlaybackService extends ChangeNotifier {
 
   /// 写入歌词到歌曲的标签中。如果歌曲当前正在播放，则需要临时释放文件锁。
   Future<bool> writeLyricToTag(Audio audio, Lyric lyric) async {
+    if (audio.isRemote) return false;
     final isPlaying = nowPlaying?.path == audio.path;
     final double? currentPosition = isPlaying ? _player.position : null;
     final bool? wasPlaying = isPlaying ? (_player.playerState == PlayerState.playing) : null;

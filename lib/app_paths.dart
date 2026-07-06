@@ -22,6 +22,8 @@ const String NOW_PLAYING_PAGE = "/nowplaying";
 
 const String STATISTICS_PAGE = "/statistics";
 
+const String ONLINE_MUSIC_PAGE = "/online";
+
 const String SETTINGS_PAGE = "/settings";
 const String SETTINGS_ISSUE_PAGE = "/settings/issue";
 

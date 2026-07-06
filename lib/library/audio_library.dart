@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'dart:ui';
 import 'package:coriander_player/app_settings.dart';
 import 'package:coriander_player/src/rust/api/tag_reader.dart';
@@ -180,7 +181,7 @@ class Audio {
 
   int? sampleRate;
 
-  /// absolute path
+  /// absolute path (local) or URL (remote)
   String path;
 
   /// secs since UNIX EPOCH
@@ -192,9 +193,21 @@ class Audio {
   /// 标签来源（Lofty、Windows、null）
   String? by;
 
+  /// 是否是在线音乐
+  bool isRemote;
+
+  /// 在线封面 URL
+  String? coverUrl;
+
+  /// 在线歌词 URL
+  String? lyricsUrl;
+
+  /// 在线歌单分类
+  String? category;
+
   ImageProvider? _cover;
 
-  /// 以“、”和“/”分割艺术家，会把名称中带有这些符号的艺术家分割。
+  /// 以"、"和"/"分割艺术家，会把名称中带有这些符号的艺术家分割。
   /// 暂时想不到别的方法。
   Audio(
     this.title,
@@ -207,8 +220,12 @@ class Audio {
     this.path,
     this.modified,
     this.created,
-    this.by,
-  ) : splitedArtists = artist.split(
+    this.by, {
+    this.isRemote = false,
+    this.coverUrl,
+    this.lyricsUrl,
+    this.category,
+  }) : splitedArtists = artist.split(
           RegExp(AppSettings.instance.artistSplitPattern),
         );
 
@@ -226,6 +243,28 @@ class Audio {
         map["by"],
       );
 
+  /// 从在线 API 返回的 JSON 创建 Audio 对象
+  factory Audio.fromRemoteMap(Map map) {
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    return Audio(
+      map["title"] ?? "未知",
+      map["artist"] ?? "未知",
+      map["album"] ?? "未知",
+      map["track"] ?? 0,
+      0,
+      null,
+      null,
+      map["file"] ?? "",
+      now,
+      now,
+      null,
+      isRemote: true,
+      coverUrl: map["cover"],
+      lyricsUrl: map["lyricsUrl"],
+      category: map["category"],
+    );
+  }
+
   Map toMap() => {
         "title": title,
         "artist": artist,
@@ -237,7 +276,11 @@ class Audio {
         "path": path,
         "modified": modified,
         "created": created,
-        "by": by
+        "by": by,
+        "isRemote": isRemote,
+        "coverUrl": coverUrl,
+        "lyricsUrl": lyricsUrl,
+        "category": category,
       };
 
   /// 读取音乐文件的图片，自动适应缩放
@@ -262,6 +305,10 @@ class Audio {
   /// 缓存ImageProvider不用重新解码。快速滚动时最多250mb
   /// 48*48
   Future<ImageProvider?> get cover {
+    if (isRemote && coverUrl != null) {
+      _cover ??= NetworkImage(coverUrl!);
+      return Future.value(_cover);
+    }
     if (_cover == null) {
       return _getResizedPic(width: 48, height: 48).then((value) {
         if (value == null) return null;
@@ -275,13 +322,21 @@ class Audio {
 
   /// audio detail page 不需要频繁调用，所以不缓存图片
   /// 200 * 200
-  Future<ImageProvider?> get mediumCover =>
-      _getResizedPic(width: 200, height: 200);
+  Future<ImageProvider?> get mediumCover {
+    if (isRemote && coverUrl != null) {
+      return Future.value(NetworkImage(coverUrl!));
+    }
+    return _getResizedPic(width: 200, height: 200);
+  }
 
   /// now playing 不需要频繁调用，所以不缓存图片
   /// size: 400 * devicePixelRatio（屏幕缩放大小）
-  Future<ImageProvider?> get largeCover =>
-      _getResizedPic(width: 400, height: 400);
+  Future<ImageProvider?> get largeCover {
+    if (isRemote && coverUrl != null) {
+      return Future.value(NetworkImage(coverUrl!));
+    }
+    return _getResizedPic(width: 400, height: 400);
+  }
 
   @override
   String toString() {

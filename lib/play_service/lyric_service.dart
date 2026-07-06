@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:coriander_player/app_settings.dart';
 import 'package:coriander_player/library/audio_library.dart';
+import 'package:coriander_player/library/online_music_service.dart';
 import 'package:coriander_player/lyric/lrc.dart';
 import 'package:coriander_player/lyric/lyric.dart';
 import 'package:coriander_player/lyric/lyric_source.dart';
@@ -109,6 +110,16 @@ class LyricService extends ChangeNotifier {
   }
 
   Future<Lyric?> _loadLyric(Audio nowPlaying) async {
+    if (nowPlaying.isRemote) {
+      if (nowPlaying.lyricsUrl != null && nowPlaying.lyricsUrl!.isNotEmpty) {
+        final content = await OnlineMusicService.getLyricsContent(nowPlaying.lyricsUrl!);
+        if (content != null && content.isNotEmpty) {
+          return parseLyricText(content);
+        }
+      }
+      return null;
+    }
+
     if (AppSettings.instance.localLyricFirst) {
       final local = await Lrc.fromAudioPath(nowPlaying);
       if (local != null) return local;
