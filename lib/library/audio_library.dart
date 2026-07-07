@@ -243,6 +243,15 @@ class Audio {
         map["by"],
       );
 
+  static String? _safeEncodeUrl(String? url) {
+    if (url == null || url.isEmpty) return url;
+    try {
+      return Uri.encodeFull(Uri.decodeFull(url));
+    } catch (e) {
+      return Uri.encodeFull(url);
+    }
+  }
+
   /// 从在线 API 返回的 JSON 创建 Audio 对象
   factory Audio.fromRemoteMap(Map map) {
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
@@ -254,13 +263,13 @@ class Audio {
       0,
       null,
       null,
-      map["file"] ?? "",
+      _safeEncodeUrl(map["file"]) ?? "",
       now,
       now,
       null,
       isRemote: true,
-      coverUrl: map["cover"],
-      lyricsUrl: map["lyricsUrl"],
+      coverUrl: _safeEncodeUrl(map["cover"]),
+      lyricsUrl: _safeEncodeUrl(map["lyricsUrl"]),
       category: map["category"],
     );
   }
