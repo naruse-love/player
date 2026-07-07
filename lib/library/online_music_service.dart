@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
-const String _baseUrl = 'https://api.naruse.tech';
+const String _baseUrl = 'https://naruse.tech';
 
 /// 在线音乐分类
 class OnlineCategory {
