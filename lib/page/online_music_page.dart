@@ -162,17 +162,14 @@ class _OnlineMusicPageState extends State<OnlineMusicPage> {
       body: Column(
         children: [
           if (categories.isNotEmpty && !isSearching)
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
+            Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: Row(
+              child: Wrap(
+                spacing: 8.0,
+                runSpacing: 8.0,
                 children: [
                   _buildCategoryChip("全部", selectedCategory == "全部"),
-                  const SizedBox(width: 8),
-                  ...categories.map((c) => Padding(
-                        padding: const EdgeInsets.only(right: 8.0),
-                        child: _buildCategoryChip(c.name, selectedCategory == c.name),
-                      )),
+                  ...categories.map((c) => _buildCategoryChip(c.name, selectedCategory == c.name)),
                 ],
               ),
             ),

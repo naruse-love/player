@@ -306,7 +306,7 @@ class Audio {
   /// 48*48
   Future<ImageProvider?> get cover {
     if (isRemote && coverUrl != null) {
-      _cover ??= NetworkImage(coverUrl!);
+      _cover ??= NetworkImage(coverUrl!, headers: const {'User-Agent': 'CorianderPlayer/1.0'});
       return Future.value(_cover);
     }
     if (_cover == null) {
@@ -324,7 +324,7 @@ class Audio {
   /// 200 * 200
   Future<ImageProvider?> get mediumCover {
     if (isRemote && coverUrl != null) {
-      return Future.value(NetworkImage(coverUrl!));
+      return Future.value(NetworkImage(coverUrl!, headers: const {'User-Agent': 'CorianderPlayer/1.0'}));
     }
     return _getResizedPic(width: 200, height: 200);
   }
@@ -333,7 +333,7 @@ class Audio {
   /// size: 400 * devicePixelRatio（屏幕缩放大小）
   Future<ImageProvider?> get largeCover {
     if (isRemote && coverUrl != null) {
-      return Future.value(NetworkImage(coverUrl!));
+      return Future.value(NetworkImage(coverUrl!, headers: const {'User-Agent': 'CorianderPlayer/1.0'}));
     }
     return _getResizedPic(width: 400, height: 400);
   }
