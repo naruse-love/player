@@ -27,16 +27,24 @@ class _OnlineMusicPageState extends State<OnlineMusicPage> {
   @override
   void initState() {
     super.initState();
-    _loadCategories();
-    _loadTracks();
+    OnlineMusicService.instance.addListener(_onServiceUpdate);
+    OnlineMusicService.instance.init();
     scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
+    OnlineMusicService.instance.removeListener(_onServiceUpdate);
     searchController.dispose();
     scrollController.dispose();
     super.dispose();
+  }
+
+  void _onServiceUpdate() {
+    if (mounted && OnlineMusicService.instance.isReady) {
+      _loadCategories();
+      _loadTracks(page: currentPage, force: true);
+    }
   }
 
   void _onScroll() {
@@ -48,8 +56,8 @@ class _OnlineMusicPageState extends State<OnlineMusicPage> {
     }
   }
 
-  Future<void> _loadCategories() async {
-    final fetched = await OnlineMusicService.getCategories();
+  void _loadCategories() {
+    final fetched = OnlineMusicService.instance.getCategories();
     if (mounted) {
       setState(() {
         categories = fetched;
@@ -57,20 +65,29 @@ class _OnlineMusicPageState extends State<OnlineMusicPage> {
     }
   }
 
-  Future<void> _loadTracks({int page = 1}) async {
-    if (isLoading) return;
+  void _loadTracks({int page = 1, bool force = false}) {
+    if (!OnlineMusicService.instance.isReady) return;
+    if (isLoading && !force) return;
     setState(() {
       isLoading = true;
     });
 
-    final result = await OnlineMusicService.getCategoryTracks(selectedCategory, page);
+    final result = OnlineMusicService.instance.getCategoryTracks(selectedCategory, page);
 
     if (mounted) {
       setState(() {
         if (page == 1) {
           tracks = result.tracks;
         } else {
-          tracks.addAll(result.tracks);
+          // If not force, and we are appending, we need to make sure we don't append duplicates if data changed
+          // For simplicity, just append if it's a real pagination
+          if (force && page > 1) {
+             // In force mode, it's a background update. We probably should just reload page 1 to be safe.
+             tracks = result.tracks;
+             page = 1;
+          } else {
+             tracks.addAll(result.tracks);
+          }
         }
         currentPage = result.page;
         totalPages = result.pages;
@@ -80,21 +97,22 @@ class _OnlineMusicPageState extends State<OnlineMusicPage> {
     }
   }
 
-  Future<void> _search() async {
+  void _search() {
+    if (!OnlineMusicService.instance.isReady) return;
+    
     final query = searchController.text.trim();
     if (query.isEmpty) {
       _loadTracks();
       return;
     }
 
-    if (isLoading) return;
     setState(() {
       isLoading = true;
       isSearching = true;
       selectedCategory = ''; // unselect category
     });
 
-    final result = await OnlineMusicService.search(query);
+    final result = OnlineMusicService.instance.search(query);
 
     if (mounted) {
       setState(() {
