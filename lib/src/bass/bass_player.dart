@@ -131,6 +131,9 @@ class BassPlayer {
   }
 
   void _bassInit() {
+    final agentPtr = "CorianderPlayer/1.0".toNativeUtf8() as ffi.Pointer<ffi.Void>;
+    _bass.BASS_SetConfigPtr(BASS.BASS_CONFIG_NET_AGENT, agentPtr);
+
     if (_bass.BASS_Init(
             1, 48000, BASS.BASS_DEVICE_REINIT, ffi.nullptr, ffi.nullptr) ==
         0) {

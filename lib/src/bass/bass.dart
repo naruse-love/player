@@ -58,6 +58,8 @@ const int BASS_ACTIVE_PAUSED = 3;
 
 const int BASS_ACTIVE_PAUSED_DEVICE = 4;
 
+const int BASS_CONFIG_NET_AGENT = 16;
+
 const int BASS_ACTIVE_STALLED = 2;
 
 const int BASS_ATTRIB_VOLDSP = 19;
@@ -113,6 +115,21 @@ class Bass {
   int BASS_Start() {
     return _BASS_Start();
   }
+
+  int BASS_SetConfigPtr(
+    int option,
+    ffi.Pointer<ffi.Void> value,
+  ) {
+    return _BASS_SetConfigPtr(
+      option,
+      value,
+    );
+  }
+
+  late final _BASS_SetConfigPtrPtr =
+      _lookup<ffi.NativeFunction<BOOL Function(DWORD, ffi.Pointer<ffi.Void>)>>('BASS_SetConfigPtr');
+  late final _BASS_SetConfigPtr =
+      _BASS_SetConfigPtrPtr.asFunction<int Function(int, ffi.Pointer<ffi.Void>)>();
 
   late final _BASS_StartPtr =
       _lookup<ffi.NativeFunction<BOOL Function()>>('BASS_Start');
