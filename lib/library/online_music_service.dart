@@ -150,14 +150,17 @@ class OnlineMusicService extends ChangeNotifier {
     return list;
   }
 
+  /// 获取指定分类的所有曲目（用于播放整个分类）
+  List<Audio> getAllCategoryTracks(String category) {
+    if (category == '全部' || category.isEmpty) {
+      return _allTracks;
+    }
+    return _allTracks.where((t) => t.category == category).toList();
+  }
+
   /// 获取指定分类的曲目列表（本地分页）
   OnlineTrackPage getCategoryTracks(String category, int page) {
-    List<Audio> filtered;
-    if (category == '全部' || category.isEmpty) {
-      filtered = _allTracks;
-    } else {
-      filtered = _allTracks.where((t) => t.category == category).toList();
-    }
+    final filtered = getAllCategoryTracks(category);
 
     final total = filtered.length;
     final pages = (total / 20).ceil();

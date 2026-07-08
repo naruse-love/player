@@ -124,6 +124,21 @@ class _OnlineMusicPageState extends State<OnlineMusicPage> {
     }
   }
 
+  void _playTrack(Audio target) {
+    if (!OnlineMusicService.instance.isReady) return;
+    List<Audio> fullPlaylist;
+    if (isSearching) {
+      fullPlaylist = tracks;
+    } else {
+      fullPlaylist = OnlineMusicService.instance.getAllCategoryTracks(selectedCategory);
+    }
+    
+    final index = fullPlaylist.indexOf(target);
+    if (index != -1) {
+      PlayService.instance.playbackService.play(index, fullPlaylist);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -188,8 +203,8 @@ class _OnlineMusicPageState extends State<OnlineMusicPage> {
                         );
                       }
                       return _RemoteAudioTile(
-                        audioIndex: index,
-                        playlist: tracks,
+                        audio: tracks[index],
+                        onTap: () => _playTrack(tracks[index]),
                       );
                     },
                   ),
@@ -217,17 +232,16 @@ class _OnlineMusicPageState extends State<OnlineMusicPage> {
 
 class _RemoteAudioTile extends StatelessWidget {
   const _RemoteAudioTile({
-    required this.audioIndex,
-    required this.playlist,
+    required this.audio,
+    required this.onTap,
   });
 
-  final int audioIndex;
-  final List<Audio> playlist;
+  final Audio audio;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final audio = playlist[audioIndex];
     final placeholder = Icon(
       Symbols.music_note,
       size: 48.0,
@@ -235,9 +249,7 @@ class _RemoteAudioTile extends StatelessWidget {
     );
 
     return InkWell(
-      onTap: () {
-        PlayService.instance.playbackService.play(audioIndex, playlist);
-      },
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
         child: Row(
